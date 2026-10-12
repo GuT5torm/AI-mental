@@ -11,11 +11,11 @@ export default defineConfig({
     },
   },
   server:{
-    // 上线状态：/api 转发到远端后端。
+    // 本地开发：/api 转发到本地后端（端口见 application.yml）。
     // /files/** 不在这个前缀下，静态资源基址见 src/config/index.js，两处要一起改。
     proxy: {
       '/api': {
-      target: 'http://159.75.169.224:1235',
+      target: 'http://localhost:1236',
       changeOrigin: true
       }
     }
