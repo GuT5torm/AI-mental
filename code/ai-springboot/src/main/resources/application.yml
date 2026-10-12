@@ -1,0 +1,46 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mental_health_assistant
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: mental-health-hikari
+      minimum-idle: 2
+      maximum-pool-size: 10
+      connection-timeout: 30000
+  jackson:
+    time-zone: Asia/Shanghai
+    serialization:
+      # LocalDateTime 序列化为 ISO 字符串而非时间戳数组
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+#服务器配置
+server:
+  port: 1236
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # 调试期输出 SQL，联调完成后可改为 org.apache.ibatis.logging.nologging.NoLoggingImpl
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+app:
+  ai:
+    # 大模型提供方。D1 选型未定，先用 mock 实现跑通契约，
+    # 接入真实模型后改为对应实现类的 havingValue
+    provider: mock
+  upload:
+    dir: ./uploads
+  file:
+    url-prefix: /files
+
+jwt:
+  # HS256 要求密钥不少于 256 bit，此处为 Base64 编码的 384 bit 随机串
+  secret: OEMJA5w3msVs5cD/4h8FUHaqfCKvc2o8REl+BRAh3uFytH6Zhz+wFmwDWbDz3JAW
+  # 有效期，单位毫秒，默认 2 小时
+  expiration: 7200000

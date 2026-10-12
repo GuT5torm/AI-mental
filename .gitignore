@@ -1,0 +1,19 @@
+# 构建产物
+target/
+dist/
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 运行时与日志
+uploads/
+*.log
+.workbuddy/*.log
+.workbuddy/backup_*.sql
+
+# 系统
+.DS_Store
+Thumbs.db
