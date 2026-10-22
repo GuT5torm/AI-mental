@@ -2,6 +2,8 @@
 
 > 一个面向情绪陪伴与心理疏导场景的全栈 Web 应用：AI 流式对话、情绪日记、心理知识库与管理后台。
 
+[![CI](https://github.com/GuT5torm/AI-mental/actions/workflows/ci.yml/badge.svg)](https://github.com/GuT5torm/AI-mental/actions/workflows/ci.yml)
+
 ## 项目简介
 
 本项目是一个个人全栈实践项目，围绕"情绪记录 + AI 陪伴 + 心理知识科普"构建，包含完整的前端、后端、数据库结构与自动化测试。
@@ -136,6 +138,16 @@ Spring Boot 3
 - PostgreSQL 16
 
 ### 1. 初始化数据库
+
+**方式 A：Docker Compose（推荐）**
+
+```bash
+docker compose up -d
+```
+
+首次启动会自动创建数据库并导入表结构与演示数据。
+
+**方式 B：手动执行 SQL**
 
 ```bash
 # 创建数据库

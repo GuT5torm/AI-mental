@@ -21,7 +21,7 @@ public interface AiChatClient {
 
     /**
      * 模型标识，会写入 {@code consultation_message.ai_model}，
-     * 库里既有数据的取值为 {@code openai}。
+     * 库里既有数据的取值为 {@code deepseek-chat}。
      */
     String getModelName();
 

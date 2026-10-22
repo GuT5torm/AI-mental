@@ -1,0 +1,18 @@
+# 一条命令拉起本地数据库：docker compose up -d
+# 首次启动会自动按文件名顺序执行 db/ 目录下的 schema.sql 与 seed.sql
+services:
+  postgres:
+    image: postgres:16
+    container_name: mental-health-postgres
+    environment:
+      POSTGRES_DB: mental_health_assistant
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./code/ai-springboot/src/main/resources/db:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
