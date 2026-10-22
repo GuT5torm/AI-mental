@@ -8,6 +8,20 @@
 
 用户可以通过 AI 咨询获得即时陪伴，在情绪日记中记录每日状态并获取结构化分析；同时，管理员可以在后台查看运营数据、管理知识文章、查阅咨询记录与情绪日志。
 
+## 界面预览
+
+| 首页 | AI 咨询 |
+| --- | --- |
+| ![首页](docs/screenshots/01-home.png) | ![AI 咨询](docs/screenshots/04-consultations.png) |
+
+| 情绪日记 | 数据看板 |
+| --- | --- |
+| ![情绪日记](docs/screenshots/05-emotion-diary.png) | ![数据看板](docs/screenshots/03-dashboard.png) |
+
+| 知识库 | 登录页 |
+| --- | --- |
+| ![知识库](docs/screenshots/06-knowledge.png) | ![登录页](docs/screenshots/02-login.png) |
+
 ## 功能特性
 
 ### 用户端
