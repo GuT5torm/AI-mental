@@ -156,7 +156,7 @@ onMounted(() => {
     }
 
     .header-section {
-        background: linear-gradient(135deg, #f59e0b 0%, #8b5cf6 100%);
+        background: linear-gradient(135deg, #4c3a80 0%, #8a6fd8 100%);
         color: white;
         padding: 48px;
 
@@ -198,7 +198,7 @@ onMounted(() => {
                 gap: 1rem;
 
                 .recommend-item {
-                    border-left: 4px solid #f59e0b;
+                    border-left: 4px solid #8a6fd8;
                     padding-left: 10px;
                     cursor: pointer;
 

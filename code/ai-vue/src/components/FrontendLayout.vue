@@ -94,6 +94,15 @@ onMounted(() => {
                     color: #7c5cd6;
                 }
             }
+
+            :deep(.el-button--primary) {
+                background: linear-gradient(135deg, #9d82e8 0%, #7c5cd6 100%);
+                border: none;
+
+                &:hover {
+                    background: linear-gradient(135deg, #ab93ec 0%, #8a6cde 100%);
+                }
+            }
         }
     }
 
