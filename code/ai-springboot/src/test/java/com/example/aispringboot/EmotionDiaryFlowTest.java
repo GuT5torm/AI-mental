@@ -180,7 +180,7 @@ public class EmotionDiaryFlowTest {
         // 详情弹窗直接复用列表行，username / nickname 必须是行内字段而不是前端二次请求
         for (JsonNode row : data.get("records")) {
             assertEquals("test", row.get("username").asText());
-            assertEquals("tyest", row.get("nickname").asText());
+            assertEquals("小明", row.get("nickname").asText());
             assertTrue(row.has("diaryDate"));
             assertTrue(row.has("moodScore"));
         }
