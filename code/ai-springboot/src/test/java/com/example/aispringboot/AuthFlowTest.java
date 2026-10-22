@@ -73,12 +73,13 @@ public class AuthFlowTest {
     }
 
     @Test
-    public void login_账号不存在_返回6002() throws Exception {
+    public void login_账号不存在_与密码错误返回一致避免账号枚举() throws Exception {
         mockMvc.perform(post("/api/user/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", "no_such_user_xyz", "password", "123456"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("6002"));
+                .andExpect(jsonPath("$.code").value("-1"))
+                .andExpect(jsonPath("$.msg").value("用户名或密码错误"));
     }
 
     /**

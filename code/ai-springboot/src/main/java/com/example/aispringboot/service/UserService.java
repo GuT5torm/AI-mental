@@ -6,6 +6,7 @@ import com.example.aispringboot.DTO.command.UserRegisterCommandDTO;
 import com.example.aispringboot.DTO.response.UserLoginResponseDTO;
 import com.example.aispringboot.common.BusinessException;
 import com.example.aispringboot.common.JwtUtil;
+import com.example.aispringboot.common.RateLimiter;
 import com.example.aispringboot.common.Result;
 import com.example.aispringboot.common.ResultCode;
 import com.example.aispringboot.entity.User;
@@ -14,10 +15,14 @@ import jakarta.annotation.Resource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class UserService {
@@ -30,12 +35,21 @@ public class UserService {
     /** 状态：0 禁用，1 正常 */
     private static final int STATUS_NORMAL = 1;
 
+    /** 同一账号 15 分钟内连续失败 5 次后锁定，防止密码爆破 */
+    private static final int MAX_LOGIN_FAILURES = 5;
+    private static final Duration LOGIN_LOCK_WINDOW = Duration.ofMinutes(15);
+    /** 同一 IP 每小时最多 5 次注册，防止脚本批量刷号 */
+    private static final int MAX_REGISTERS_PER_IP = 5;
+    private static final Duration REGISTER_WINDOW = Duration.ofHours(1);
+
     @Resource
     private UserMapper userMapper;
     @Resource
     private PasswordEncoder passwordEncoder;
     @Resource
     private JwtUtil jwtUtil;
+    @Resource
+    private RateLimiter rateLimiter;
 
     /**
      * 登录。
@@ -45,23 +59,33 @@ public class UserService {
      */
     public Result<UserLoginResponseDTO> login(UserLoginCommandDTO commandDTO) {
         String account = commandDTO.getUsername().trim();
+        String failKey = "login:" + account.toLowerCase(Locale.ROOT);
+        if (rateLimiter.isBlocked(failKey, MAX_LOGIN_FAILURES, LOGIN_LOCK_WINDOW)) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "登录尝试过于频繁，请15分钟后再试");
+        }
+
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<User>()
                 .eq(User::getUsername, account)
                 .or()
                 .eq(User::getEmail, account)
                 .last("LIMIT 1");
         List<User> users = userMapper.selectList(queryWrapper);
+        // 账号不存在与密码错误返回完全一致的 code/msg，避免账号枚举；
+        // 两者都计入失败次数，防止用不存在账号探测接口行为差异
         if (users.isEmpty()) {
-            throw new BusinessException(ResultCode.USER_NOT_EXIST.getCode(), "用户不存在");
+            rateLimiter.recordFailure(failKey, MAX_LOGIN_FAILURES, LOGIN_LOCK_WINDOW);
+            throw new BusinessException(ResultCode.ERROR.getCode(), "用户名或密码错误");
         }
         User user = users.get(0);
 
         if (!passwordEncoder.matches(commandDTO.getPassword(), user.getPassword())) {
+            rateLimiter.recordFailure(failKey, MAX_LOGIN_FAILURES, LOGIN_LOCK_WINDOW);
             throw new BusinessException(ResultCode.ERROR.getCode(), "用户名或密码错误");
         }
         if (!Integer.valueOf(STATUS_NORMAL).equals(user.getStatus())) {
             throw new BusinessException(ResultCode.ERROR.getCode(), "账号已被禁用，请联系管理员");
         }
+        rateLimiter.reset(failKey);
 
         String token = jwtUtil.generateToken(user.getId(), user.getUserType());
         return Result.ok(buildLoginResponse(user, token));
@@ -76,6 +100,12 @@ public class UserService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Result<UserLoginResponseDTO> register(UserRegisterCommandDTO commandDTO) {
+        // 按 IP 限流，防止脚本批量注册；/register 与 /add 两个入口都经过这里
+        String registerKey = "register:" + currentIp();
+        if (!rateLimiter.tryAcquire(registerKey, MAX_REGISTERS_PER_IP, REGISTER_WINDOW)) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "注册过于频繁，请稍后再试");
+        }
+
         String username = commandDTO.getUsername().trim();
         String email = commandDTO.getEmail().trim();
 
@@ -159,5 +189,13 @@ public class UserService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /** 当前请求来源 IP；非 HTTP 上下文（如单测直调）返回 unknown，限流退化为全局限流 */
+    private static String currentIp() {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
+            return attrs.getRequest().getRemoteAddr();
+        }
+        return "unknown";
     }
 }

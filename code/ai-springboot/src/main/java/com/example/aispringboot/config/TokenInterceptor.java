@@ -5,6 +5,8 @@ import com.example.aispringboot.common.JwtUtil;
 import com.example.aispringboot.common.Result;
 import com.example.aispringboot.common.ResultCode;
 import com.example.aispringboot.common.UserContext;
+import com.example.aispringboot.entity.User;
+import com.example.aispringboot.mapper.UserMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,10 +30,12 @@ public class TokenInterceptor implements HandlerInterceptor {
 
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
+    private final UserMapper userMapper;
 
-    public TokenInterceptor(JwtUtil jwtUtil, ObjectMapper objectMapper) {
+    public TokenInterceptor(JwtUtil jwtUtil, ObjectMapper objectMapper, UserMapper userMapper) {
         this.jwtUtil = jwtUtil;
         this.objectMapper = objectMapper;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -51,7 +55,12 @@ public class TokenInterceptor implements HandlerInterceptor {
             Claims claims = jwtUtil.parseToken(token);
             Long userId = claims == null ? null : jwtUtil.getUserId(claims);
             if (userId != null) {
-                UserContext.set(userId, jwtUtil.getUserType(claims));
+                // 实时读库而非信任 JWT 里的 userType 快照：
+                // 禁用账号立即失效、管理员降权立即生效，token 无需等待自然过期
+                User user = userMapper.selectById(userId);
+                if (user != null && Integer.valueOf(1).equals(user.getStatus())) {
+                    UserContext.set(userId, user.getUserType());
+                }
             }
         }
 

@@ -19,6 +19,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * 文件上传。
@@ -28,8 +30,13 @@ import java.util.Locale;
  * （多了一个 s）。前端 getImage() 直接拼接 fileBaseUrl 与 file_path，因此沿用这个拼写，
  * 否则历史封面全部 404。
  *
- * <p>WebMvcConfig 把 {@code /files/**} 映射到上传根目录，所以磁盘路径是
- * {@code {uploadDir}/bussiness/article/xxx.png}，而入库的 file_path 带 /files 前缀。
+ * <p>安全约束：
+ * <ul>
+ *   <li>businessType 必须匹配 {@code [a-z0-9_-]{1,32}}，杜绝目录穿越；</li>
+ *   <li>扩展名白名单校验，杜绝 .html/.svg 等可执行类型带来的存储型 XSS；</li>
+ *   <li>UUID 命名不可预测，防止上传文件被枚举下载（/files/** 由静态资源映射直接读盘，
+ *       不经鉴权拦截器，可预测性是唯一的访问屏障）。</li>
+ * </ul>
  */
 @Service
 public class FileService {
@@ -43,6 +50,12 @@ public class FileService {
     @Resource
     private SysFileInfoMapper sysFileInfoMapper;
 
+    /** 允许落盘的扩展名白名单：图片 + 常规文档 + 音视频 + 纯文本。svg 不在其中（可携带脚本）。 */
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            "jpg", "jpeg", "png", "gif", "webp", "bmp", "ico",
+            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "csv",
+            "mp4", "webm", "mp3", "wav", "txt", "md");
+
     public FileUploadResponseDTO upload(MultipartFile file, String businessType,
                                         String businessId, String businessField) {
         if (file == null || file.isEmpty()) {
@@ -51,10 +64,13 @@ public class FileService {
 
         String originalName = safeOriginalName(file.getOriginalFilename());
         String ext = extensionOf(originalName);
-        String type = businessType == null || businessType.isBlank() ? "COMMON" : businessType.trim();
+        if (!ext.isEmpty() && !ALLOWED_EXTENSIONS.contains(ext)) {
+            throw new BusinessException(ResultCode.FILE_CONTENT_INVALID.getCode(), "不支持的文件类型: " + ext);
+        }
+        String type = validateBusinessType(businessType);
 
-        // 时间戳命名，避免原始文件名里的中文与特殊字符引发编码问题
-        String fileName = System.currentTimeMillis() + (ext.isEmpty() ? "" : "." + ext);
+        // UUID 命名：不可预测，防止文件被枚举下载；也避免原始文件名里的中文与特殊字符引发编码问题
+        String fileName = UUID.randomUUID().toString().replace("-", "") + (ext.isEmpty() ? "" : "." + ext);
         String relativeDir = "bussiness/" + type.toLowerCase(Locale.ROOT);
         Path dir = Paths.get(uploadDir, relativeDir).toAbsolutePath().normalize();
         try {
@@ -100,6 +116,19 @@ public class FileService {
         dto.setBusinessField(persisted.getBusinessField());
         dto.setCreateTimeValue(persisted.getCreateTime() == null ? LocalDateTime.now() : persisted.getCreateTime());
         return dto;
+    }
+
+    /**
+     * businessType 用于拼接磁盘目录，必须限定为安全的目录名字符集。
+     * 不做这个校验的话，"../.." 之类的输入会在 normalize 后跳出上传根目录。
+     * 校验按小写比对，返回值保留原大小写入库（既有记录形如 ARTICLE / USER_AVATAR）。
+     */
+    private static String validateBusinessType(String businessType) {
+        String type = businessType == null || businessType.isBlank() ? "COMMON" : businessType.trim();
+        if (!type.toLowerCase(Locale.ROOT).matches("[a-z0-9_-]{1,32}")) {
+            throw new BusinessException(ResultCode.FILE_CONTENT_INVALID.getCode(), "上传业务类型不合法");
+        }
+        return type;
     }
 
     private static String safeOriginalName(String name) {
