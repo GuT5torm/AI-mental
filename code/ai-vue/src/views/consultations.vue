@@ -1,10 +1,11 @@
 <template>
     <div class="consultations-container">
+        <div class="consultations-inner">
         <div class="sidebar">
             <!-- AI助手信息 -->
             <div class="ai-assistant-info">
                 <div class="breathing-circle">
-                    <el-image :src="iconUrl1" style="width: 25px; height: 25px;" alt="AI助手" />
+                    <el-image :src="iconUrl1" style="width: 100%; height: 100%;" alt="AI助手" />
                 </div>
                 <h3 class="assistant-name">AI助手</h3>
                 <div class="online-status">
@@ -128,7 +129,7 @@
                 <!-- 欢迎用语 -->
                 <div class="message-item ai-message" v-if="messages.length === 0">
                     <div class="message-avatar">
-                        <el-image :src="iconUrl1" style="width: 18px; height: 18px;" />
+                        <el-image :src="iconUrl1" style="width: 100%; height: 100%;" />
                     </div>
                     <div class="message-content">
                         <div class="message-bubble">
@@ -143,7 +144,7 @@
                     <div class="message-avatar">
                         <el-image v-if="msg.senderType === 1" style="width: 18px; height: 18px;"
                             :src="iconUrl3"></el-image>
-                        <el-image v-if="msg.senderType === 2" style="width: 18px; height: 18px;"
+                        <el-image v-if="msg.senderType === 2" style="width: 100%; height: 100%;"
                             :src="iconUrl1"></el-image>
                     </div>
                     <div class="message-content">
@@ -186,6 +187,7 @@
                 </el-button>
             </div>
         </div>
+        </div>
     </div>
 </template>
 
@@ -197,7 +199,7 @@ import { ElMessage } from 'element-plus'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 
-const iconUrl1 = new URL('@/assets/images/robot-fill.png', import.meta.url).href
+const iconUrl1 = new URL('@/assets/images/doraemon.jpg', import.meta.url).href
 const iconUrl2 = new URL('@/assets/images/like.png', import.meta.url).href
 const iconUrl3 = new URL('@/assets/images/users.png', import.meta.url).href
 
@@ -505,8 +507,15 @@ onMounted(() => {
 </script>
 <style scoped lang="scss">
 .consultations-container {
+    width: 100%;
+    min-height: calc(100vh - 140px);
+    padding: 16px 0 24px;
+    background: linear-gradient(180deg, #e7eef8 0%, #dbe6f4 60%, #e3ecf7 100%);
+}
+.consultations-inner {
+    max-width: 1200px;
     margin: 0 auto;
-    width: 1200px;
+    padding: 0 16px;
     display: flex;
     gap: 20px;
     padding: 20px;
@@ -516,32 +525,33 @@ onMounted(() => {
 
         .ai-assistant-info {
             margin-bottom: 20px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 252, 248, 0.95) 100%);
+            background: linear-gradient(135deg, rgba(252, 253, 255, 0.9) 0%, rgba(243, 248, 254, 0.95) 100%);
             border-radius: 16px;
             padding: 16px;
-            box-shadow: 0 8px 32px rgba(251, 146, 60, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
-            border: 1px solid rgba(251, 146, 60, 0.08);
+            box-shadow: 0 8px 32px rgba(74, 158, 224, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(74, 158, 224, 0.08);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
 
             .breathing-circle {
                 width: 60px;
                 height: 60px;
-                background: linear-gradient(135deg, #fb923c 0%, #f59e0b 100%);
+                background: linear-gradient(135deg, #4a9ee0 0%, #2e6fc0 100%);
                 border-radius: 50%;
+                overflow: hidden;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 margin: 0 auto 12px;
                 animation: breathing 4s ease-in-out infinite;
-                box-shadow: 0 6px 24px rgba(251, 146, 60, 0.25);
+                box-shadow: 0 6px 24px rgba(74, 158, 224, 0.25);
                 position: relative;
             }
 
             .assistant-name {
                 font-size: 16px;
                 font-weight: 700;
-                background: linear-gradient(135deg, #fb923c, #f59e0b);
+                background: linear-gradient(135deg, #4a9ee0, #2e6fc0);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 text-align: center;
@@ -570,10 +580,10 @@ onMounted(() => {
         }
 
         .session-history {
-            background: white;
+            background: #fbfdff;
             border-radius: 16px;
             padding: 16px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 12px rgba(70, 100, 150, 0.08);
             margin-bottom: 20px;
             min-height: 250px;
             display: flex;
@@ -684,7 +694,7 @@ onMounted(() => {
         }
 
         .emotion-garden {
-            background: linear-gradient(135deg, #fef9e7 0%, #fcf4e6 50%, #f6f0e8 100%);
+            background: linear-gradient(135deg, #eef5ff 0%, #e8f1ff 50%, #f0f7ff 100%);
             border-radius: 20px;
             padding: 16px;
             margin-bottom: 20px;
@@ -724,7 +734,7 @@ onMounted(() => {
                 z-index: 10;
                 box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
                 border: 2px solid rgba(255, 255, 255, 0.8);
-                background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+                background: linear-gradient(135deg, #4a9ee0 0%, #7db8ee 50%, #9cc8f5 100%);
                 color: #fff;
 
                 .emotion-name {
@@ -782,7 +792,7 @@ onMounted(() => {
                             transition: all 0.3s ease;
 
                             &.active {
-                                background: linear-gradient(135deg, #ff9a9e, #fecfef);
+                                background: linear-gradient(135deg, #4a9ee0, #9cc8f5);
                                 transform: scale(1.2);
                                 box-shadow: 0 2px 8px rgba(255, 154, 158, 0.4);
                             }
@@ -918,8 +928,8 @@ onMounted(() => {
     .chat-main {
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 252, 250, 0.98) 100%);
         border-radius: 20px;
-        box-shadow: 0 12px 40px rgba(251, 146, 60, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04);
-        border: 1px solid rgba(251, 146, 60, 0.1);
+        box-shadow: 0 12px 40px rgba(74, 158, 224, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(74, 158, 224, 0.1);
         backdrop-filter: blur(10px);
         display: flex;
         flex-direction: column;
@@ -927,7 +937,7 @@ onMounted(() => {
         flex: 1;
 
         .chat-header {
-            background: linear-gradient(135deg, #fb923c 0%, #f59e0b 100%);
+            background: linear-gradient(135deg, #4a9ee0 0%, #2e6fc0 100%);
             color: white;
             padding: 20px 24px;
             display: flex;
@@ -975,11 +985,11 @@ onMounted(() => {
             display: flex;
             flex-direction: column;
             gap: 16px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 252, 248, 0.05) 100%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(244, 248, 255, 0.05) 100%);
             min-height: 0;
             max-height: calc(100vh - 200px);
             scrollbar-width: thin;
-            scrollbar-color: rgba(251, 146, 60, 0.3) transparent;
+            scrollbar-color: rgba(74, 158, 224, 0.3) transparent;
 
             .message-item {
                 display: flex;
@@ -990,6 +1000,7 @@ onMounted(() => {
                     width: 32px;
                     height: 32px;
                     border-radius: 50%;
+                    overflow: hidden;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -1000,8 +1011,8 @@ onMounted(() => {
 
                 &.ai-message {
                     .message-avatar {
-                        background: linear-gradient(135deg, #fb923c, #f59e0b);
-                        box-shadow: 0 4px 12px rgba(251, 146, 60, 0.3);
+                        background: linear-gradient(135deg, #4a9ee0, #2e6fc0);
+                        box-shadow: 0 4px 12px rgba(74, 158, 224, 0.3);
                     }
                 }
 
@@ -1016,13 +1027,13 @@ onMounted(() => {
                     max-width: 70%;
 
                     .message-bubble {
-                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 252, 248, 0.95) 100%);
+                        background: linear-gradient(135deg, #fbfdff 0%, #f3f8fe 100%);
                         border-radius: 16px;
                         padding: 12px 16px;
                         position: relative;
                         animation: fadeInUp 0.4s ease-out;
-                        border: 1px solid rgba(251, 146, 60, 0.1);
-                        box-shadow: 0 4px 16px rgba(251, 146, 60, 0.05);
+                        border: 1px solid rgba(74, 158, 224, 0.1);
+                        box-shadow: 0 4px 16px rgba(74, 158, 224, 0.05);
 
                         .typing-indicator {
                             display: flex;
@@ -1070,12 +1081,12 @@ onMounted(() => {
         }
 
         .chat-input {
-            border-top: 1px solid rgba(251, 146, 60, 0.1);
+            border-top: 1px solid rgba(74, 158, 224, 0.1);
             padding: 20px 24px;
             display: flex;
             gap: 12px;
             align-items: flex-end;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 252, 248, 0.7) 100%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 248, 255, 0.7) 100%);
             backdrop-filter: blur(10px);
             flex-shrink: 0;
 
@@ -1096,9 +1107,9 @@ onMounted(() => {
                 height: 60px;
                 width: 60px;
                 border-radius: 16px;
-                background: linear-gradient(135deg, #fb923c 0%, #f59e0b 100%) !important;
+                background: linear-gradient(135deg, #4a9ee0 0%, #2e6fc0 100%) !important;
                 border: none !important;
-                box-shadow: 0 6px 20px rgba(251, 146, 60, 0.25);
+                box-shadow: 0 6px 20px rgba(74, 158, 224, 0.25);
                 transition: all 0.3s ease;
             }
 

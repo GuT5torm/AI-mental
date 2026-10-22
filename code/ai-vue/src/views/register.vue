@@ -1,14 +1,12 @@
 <template>
     <div class="container">
-        <div class="title">
-            <div class="back-home">
-                <el-icon><Back /></el-icon>   
-                <p><router-link to="/auth/login">返回登录页</router-link></p>
-           </div> 
-            <div class="title-text">
-                <h2>创建您的账户</h2>
-                <p>请填写注册信息</p>
-            </div>
+        <div class="back-home">
+            <el-icon><Back /></el-icon>
+            <router-link to="/auth/login" class="back-link">返回登录页</router-link>
+        </div>
+        <div class="title-text">
+            <h2>创建你的账户</h2>
+            <p>几分钟即可开启第一段心灵对话</p>
         </div>
         <div class="form-container">
             <el-form label-position="top" :model="formData" :rules="rules" ref="submitFormRef">
@@ -33,9 +31,13 @@
                         show-password />
                 </el-form-item>
                 <el-form-item>
-                    <el-button type="primary" size="large" class="btn" @click="submitForm(submitFormRef)">注册</el-button>
+                    <el-button type="primary" size="large" class="btn" round
+                        @click="submitForm(submitFormRef)">注 册</el-button>
                 </el-form-item>
             </el-form>
+            <div class="footer">
+                <p>已有账户？<router-link to="/auth/login">直接登录</router-link></p>
+            </div>
         </div>
     </div>
 </template>
@@ -128,40 +130,80 @@ const submitForm = async (formEl) => {
 </script>
 <style lang="scss" scoped>
 .container {
-    width: 384px;
+    width: 400px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    padding: 36px 44px 24px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(76, 58, 128, 0.14);
+    border: 1px solid #eee9f7;
 
-    .flex-box {
-        display: flex;
+    .back-home {
+        display: inline-flex;
         align-items: center;
+        gap: 4px;
+        font-size: 14px;
+
+        .back-link {
+            color: #6b7280;
+            text-decoration: none;
+            transition: color 0.2s ease;
+
+            &:hover {
+                color: #7c5cd6;
+            }
+        }
     }
 
-    .title {
-        .title-text {
-            text-align: center;
+    .title-text {
+        text-align: center;
+        margin: 22px 0 26px;
 
-            h2 {
-                font-size: 36px;
-                margin-bottom: 10px;
-            }
+        h2 {
+            font-size: 30px;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 0 0 10px;
+        }
 
-            p {
-                font-size: 18px;
-                color: #6b7280;
-            }
+        p {
+            font-size: 15px;
+            color: #6b7280;
+            margin: 0;
         }
     }
 
     .form-container {
-        margin-top: 30px;
-
         .btn {
-            margin-top: 40px;
+            margin-top: 12px;
             width: 100%;
+            height: 46px;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #9d82e8 0%, #7c5cd6 100%);
+            border: none;
+
+            &:hover {
+                background: linear-gradient(135deg, #ab93ec 0%, #8a6cde 100%);
+            }
         }
 
         .footer {
-            padding: 30px;
+            padding: 18px 0 4px;
             text-align: center;
+            font-size: 14px;
+            color: #6b7280;
+
+            a {
+                color: #7c5cd6;
+                font-weight: 600;
+                text-decoration: none;
+
+                &:hover {
+                    text-decoration: underline;
+                }
+            }
         }
     }
 }

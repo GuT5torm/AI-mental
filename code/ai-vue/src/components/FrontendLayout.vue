@@ -91,7 +91,7 @@ onMounted(() => {
                 font-weight: 500;
 
                 &:hover {
-                    color: #4A90E2;
+                    color: #7c5cd6;
                 }
             }
         }

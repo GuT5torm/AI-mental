@@ -1,14 +1,12 @@
 <template>
     <div class="container">
-        <div class="title">
-           <div class="back-home">
-                <el-icon><Back /></el-icon>   
-                <span>返回首页</span>
-           </div> 
-           <div class="title-text">
-            <h2>登录您的账户</h2>
-            <p>请输入您的登录信息</p>
-           </div>
+        <div class="back-home">
+            <el-icon><Back /></el-icon>
+            <router-link to="/" class="back-link">返回首页</router-link>
+        </div>
+        <div class="title-text">
+            <h2>欢迎回来</h2>
+            <p>登录后，继续和你的 AI 伙伴聊聊近况</p>
         </div>
         <div class="form-container">
             <el-form
@@ -23,10 +21,10 @@
             <el-form-item label="密码" prop="password">
                 <el-input v-model="formData.password" size="large" placeholder="请输入密码" type="password" show-password />
             </el-form-item>
-            <el-button class="btn" size="large" type="primary" @click="submitForm(ruleFormRef)">登录</el-button>
+            <el-button class="btn" size="large" type="primary" round @click="submitForm(ruleFormRef)">登 录</el-button>
             </el-form>
             <div class="footer">
-                <p>还没有账户？<router-link to="/auth/register">去注册</router-link></p>
+                <p>还没有账户？<router-link to="/auth/register">免费注册</router-link></p>
             </div>
         </div>
     </div>
@@ -82,32 +80,75 @@ const submitForm = async (formEl) =>{
 </script>
 <style scoped lang="scss">
     .container{
-        width:384px;
-        .title{
-            .back-home{
-                margin-bottom: 60px;
-            }
-            .title-text{
-                text-align: center;
+        width: 400px;
+        padding: 44px 44px 30px;
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 20px 50px rgba(76, 58, 128, 0.14);
+        border: 1px solid #eee9f7;
 
-                h2{
-                    font-size:36px;
-                    margin-bottom: 10px;
+        .back-home{
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+
+            .back-link{
+                color: #6b7280;
+                text-decoration: none;
+                transition: color 0.2s ease;
+
+                &:hover{
+                    color: #7c5cd6;
                 }
-                p{
-                    font-size: 18px;
-                    color: #6b7280;
-                }
+            }
+        }
+
+        .title-text{
+            text-align: center;
+            margin: 26px 0 34px;
+
+            h2{
+                font-size: 32px;
+                font-weight: 700;
+                color: #1f2937;
+                margin: 0 0 10px;
+            }
+            p{
+                font-size: 15px;
+                color: #6b7280;
+                margin: 0;
             }
         }
         .form-container{
             .btn{
-                margin-top: 40px;
+                margin-top: 24px;
                 width: 100%;
+                height: 46px;
+                font-size: 16px;
+                font-weight: 600;
+                background: linear-gradient(135deg, #9d82e8 0%, #7c5cd6 100%);
+                border: none;
+
+                &:hover{
+                    background: linear-gradient(135deg, #ab93ec 0%, #8a6cde 100%);
+                }
             }
             .footer{
-                padding: 30px;
+                padding: 26px 0 4px;
                 text-align: center;
+                font-size: 14px;
+                color: #6b7280;
+
+                a{
+                    color: #7c5cd6;
+                    font-weight: 600;
+                    text-decoration: none;
+
+                    &:hover{
+                        text-decoration: underline;
+                    }
+                }
             }
         }
     }

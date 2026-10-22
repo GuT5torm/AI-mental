@@ -107,8 +107,10 @@ const getPageList = () => {
     })
 }
 
+const defaultCover = new URL('@/assets/images/article-cover.jpg', import.meta.url).href
+
 const getImage = (url) => {
-    return url ? fileBaseUrl + url : 'https://file.itndedu.com/psychology_ai.png'
+    return url ? fileBaseUrl + url : defaultCover
 
 }
 
