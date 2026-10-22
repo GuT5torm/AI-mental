@@ -130,6 +130,10 @@ createdb -U postgres mental_health_assistant
 # 导入表结构
 psql -U postgres -d mental_health_assistant \
   -f code/ai-springboot/src/main/resources/db/schema.sql
+
+# 导入演示数据（3 个账号、17 条日记、5 个会话、7 篇文章）
+psql -U postgres -d mental_health_assistant \
+  -f code/ai-springboot/src/main/resources/db/seed.sql
 ```
 
 Windows 下若 `psql` 未加入 PATH，可使用完整路径，例如：
@@ -137,16 +141,22 @@ Windows 下若 `psql` 未加入 PATH，可使用完整路径，例如：
 ```powershell
 & "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -d mental_health_assistant `
   -f code/ai-springboot/src/main/resources/db/schema.sql
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -d mental_health_assistant `
+  -f code/ai-springboot/src/main/resources/db/seed.sql
 ```
 
 ### 2. 配置后端
 
-编辑 `code/ai-springboot/src/main/resources/application.yml`：
+编辑 `code/ai-springboot/src/main/resources/application.yml`，或通过环境变量覆盖：
 
-- `spring.datasource.url / username / password`：改为本地数据库连接
-- `jwt.secret`：替换为不少于 256 bit 的 Base64 随机串
-- `app.upload.dir`：上传文件存储目录（默认 `./uploads`）
-- `app.ai.provider`：当前为 `mock`，接入真实模型后改为对应实现
+| 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/mental_health_assistant` | 数据库连接地址 |
+| `DB_USERNAME` | `postgres` | 数据库用户名 |
+| `DB_PASSWORD` | `123456` | 数据库密码，生产环境必须覆盖 |
+| `JWT_SECRET` | 开发默认密钥 | HS256 密钥，生产环境必须覆盖 |
+| `UPLOAD_DIR` | `./uploads` | 上传文件存储目录 |
+| `AI_PROVIDER` | `mock` | 大模型提供方，接入真实模型后切换 |
 
 ### 3. 启动后端
 
@@ -180,6 +190,8 @@ UPDATE "user" SET user_type = 2 WHERE username = '你的账号';
 ```
 
 > PostgreSQL 中 `user` 是保留字，必须写成带双引号的 `"user"`。
+>
+> 若已导入 `seed.sql`，可直接使用演示账号：`admin / 123456`（管理员）、`test / 123456`、`ces / 123456`。
 
 ### 6. 构建前端
 
@@ -241,7 +253,7 @@ npm run preview    # 本地预览构建产物
 | `sys_file_info` | 上传文件元信息 |
 | `user_favorite` | 用户收藏（预留） |
 
-完整 DDL 见 [code/ai-springboot/src/main/resources/db/schema.sql](code/ai-springboot/src/main/resources/db/schema.sql)。
+完整 DDL 见 [code/ai-springboot/src/main/resources/db/schema.sql](code/ai-springboot/src/main/resources/db/schema.sql)，演示数据见 [db/seed.sql](code/ai-springboot/src/main/resources/db/seed.sql)。
 
 ## 权限模型
 
@@ -256,14 +268,14 @@ npm run preview    # 本地预览构建产物
 
 ## 测试
 
-后端包含 8 个测试类，覆盖认证、咨询会话、情绪日记、知识库、数据分析、AI 任务重试与数据库冒烟等链路：
+后端包含 8 个测试类、55 个用例，覆盖认证、咨询会话、情绪日记、知识库、数据分析、AI 任务重试与数据库冒烟等链路：
 
 ```bash
 cd code/ai-springboot
 mvn test
 ```
 
-> 测试连接本地 PostgreSQL。部分用例依赖基础演示数据，首次运行前请先导入表结构并通过前端注册账号。
+> 测试连接本地 PostgreSQL。首次运行前请先导入 `schema.sql` 与 `seed.sql`，否则依赖基线数据的用例会失败。
 
 ## 已知限制
 
@@ -281,3 +293,7 @@ mvn test
 ## 说明
 
 本项目为个人项目，代码与文档由作者维护。仓库中的数据库密码、JWT 密钥等仅为本地开发默认值，部署前请务必替换。
+
+## 许可证
+
+本项目基于 [MIT License](LICENSE) 开源。

@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/mental_health_assistant
-    username: postgres
-    password: 123456
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mental_health_assistant}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:123456}
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: mental-health-hikari
@@ -31,16 +31,16 @@ mybatis-plus:
 
 app:
   ai:
-    # 大模型提供方。D1 选型未定，先用 mock 实现跑通契约，
+    # 大模型提供方。当前使用 mock 实现跑通契约，
     # 接入真实模型后改为对应实现类的 havingValue
-    provider: mock
+    provider: ${AI_PROVIDER:mock}
   upload:
-    dir: ./uploads
+    dir: ${UPLOAD_DIR:./uploads}
   file:
     url-prefix: /files
 
 jwt:
-  # HS256 要求密钥不少于 256 bit，此处为 Base64 编码的 384 bit 随机串
-  secret: OEMJA5w3msVs5cD/4h8FUHaqfCKvc2o8REl+BRAh3uFytH6Zhz+wFmwDWbDz3JAW
+  # HS256 要求密钥不少于 256 bit；生产环境请通过 JWT_SECRET 注入
+  secret: ${JWT_SECRET:OEMJA5w3msVs5cD/4h8FUHaqfCKvc2o8REl+BRAh3uFytH6Zhz+wFmwDWbDz3JAW}
   # 有效期，单位毫秒，默认 2 小时
   expiration: 7200000
