@@ -180,7 +180,7 @@ Windows 下若 `psql` 未加入 PATH，可使用完整路径，例如：
 | `DB_URL` | `jdbc:postgresql://localhost:5432/mental_health_assistant` | 数据库连接地址 |
 | `DB_USERNAME` | `postgres` | 数据库用户名 |
 | `DB_PASSWORD` | `123456` | 数据库密码，生产环境必须覆盖 |
-| `JWT_SECRET` | 开发默认密钥 | HS256 密钥，生产环境必须覆盖 |
+| `JWT_SECRET` | 未配置时启动期随机生成 | HS256 密钥；未配置则每次重启后已签发 token 全部失效，本地与生产都建议显式设置 |
 | `UPLOAD_DIR` | `./uploads` | 上传文件存储目录 |
 | `AI_PROVIDER` | `mock` | 大模型提供方，`mock` 或 `deepseek` |
 | `AI_API_KEY` | 空 | 对接 DeepSeek 的 API Key（`provider=deepseek` 时必填） |

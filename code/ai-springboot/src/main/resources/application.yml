@@ -48,7 +48,8 @@ app:
     url-prefix: /files
 
 jwt:
-  # HS256 要求密钥不少于 256 bit（base64 编码后填入）；以下为仅用于本地开发的一次性默认值，生产环境必须通过 JWT_SECRET 注入
-  secret: ${JWT_SECRET:uwib3cviuwXm3IIdG1W6aAh6IK+Dh45oQFuk2D4qdFpSDnP/NpEytwiN1/L2L7Zk}
+  # HS256 要求密钥不少于 256 bit（base64 编码后填入）。未配置 JWT_SECRET 时，
+  # 启动会临时生成随机密钥（重启后已签发 token 全部失效），本地与生产都建议显式注入
+  secret: ${JWT_SECRET:}
   # 有效期，单位毫秒，默认 2 小时
   expiration: 7200000
