@@ -33,7 +33,7 @@
 </template>
 <script setup>
 import {ref,reactive} from 'vue'
-import { login } from '@/api/gutts'
+import { login } from '@/api/index'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 

@@ -49,7 +49,7 @@
 import { onMounted, ref, reactive } from 'vue'
 import PageHead from '@/components/PageHead.vue'
 import Tablesearch from '@/components/Tablesearch.vue'
-import { categoryTree, articlePage, getArticleDetail, changeArticleStatus, deleteArticle } from '@/api/gutts'
+import { categoryTree, articlePage, getArticleDetail, changeArticleStatus, deleteArticle } from '@/api/index'
 import ArticleDialog from '@/components/ArticleDialog.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 

@@ -1,7 +1,7 @@
 import {defineStore} from 'pinia'
 import {ref} from 'vue'
 
-export const useGuttsStore = defineStore('gutts', () => {
+export const useLayoutStore = defineStore('layout', () => {
   const isCollapse = ref(false)
 
   const toggleCollapse = () => {

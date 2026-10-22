@@ -132,7 +132,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import PageHead from '@/components/PageHead.vue'
 import Tablesearch from '@/components/Tablesearch.vue'
-import { getEmotionalPage, deleteEmotional } from '@/api/gutts'
+import { getEmotionalPage, deleteEmotional } from '@/api/index'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 const getEmotionTagType = (emotion) => {

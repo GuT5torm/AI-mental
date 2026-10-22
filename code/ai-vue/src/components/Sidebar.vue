@@ -25,12 +25,12 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useGuttsStore } from '@/stores/gutts.js'
+import { useLayoutStore } from '@/stores/layout.js'
 const router = useRouter()
 
 const iconUrl =new URL('@/assets/images/机器人.png', import.meta.url).href
 
-const isCollapse = computed(() => useGuttsStore().isCollapse)
+const isCollapse = computed(() => useLayoutStore().isCollapse)
 
 const selectMenu = (key) => {
     console.log(key)

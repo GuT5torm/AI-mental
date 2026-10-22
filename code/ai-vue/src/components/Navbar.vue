@@ -12,7 +12,7 @@
             <el-dropdown @command="handleCommand">
                 <div class="flex-box">
                     <el-avatar src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
-                    <p class="page-title">Gutts</p>
+                    <p class="page-title">{{ nickname }}</p>
                     <el-icon>
                         <ArrowDown />
                     </el-icon>
@@ -28,14 +28,24 @@
 </template>
 <script setup>
 
-import { ref } from 'vue'
-import { useGuttsStore } from '@/stores/gutts.js'
+import { ref, computed } from 'vue'
+import { useLayoutStore } from '@/stores/layout.js'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { logout } from '@/api/gutts.js'
+import { logout } from '@/api/index.js'
 
 const router = useRouter()
 const route = useRoute()
+
+// 右上角显示当前登录用户的昵称，缺省时回退为中性名
+const nickname = computed(() => {
+    try {
+        const info = JSON.parse(localStorage.getItem('userInfo') || '{}')
+        return info.nickname || '心理健康 AI 助手'
+    } catch {
+        return '心理健康 AI 助手'
+    }
+})
 
 const handleCommand = (command) => {
     console.log(command)
@@ -57,7 +67,7 @@ const handleCommand = (command) => {
 
 }
 const handleCollapse = () => {
-    useGuttsStore().toggleCollapse()
+    useLayoutStore().toggleCollapse()
 }
 
 </script>

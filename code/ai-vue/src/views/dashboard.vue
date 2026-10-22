@@ -114,7 +114,7 @@
 </template>
 <script setup>
 
-import { getAnalyticsOverview } from '@/api/gutts';
+import { getAnalyticsOverview } from '@/api/index';
 import { onMounted, ref } from 'vue';
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'

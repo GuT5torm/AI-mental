@@ -88,7 +88,7 @@ Spring Boot 3
 - **认证**：登录后签发 JWT，前端在 `Authorization` 头中携带；拦截器解析后将 `userId`、`userType` 写入线程上下文，请求结束后清理。
 - **权限**：`user_type = 1` 为普通用户，`user_type = 2` 为管理员；后台接口统一校验管理员身份。
 - **异步任务**：日记提交时写入 `ai_analysis_task` 任务，由调度线程异步处理并回填分析结果，避免阻塞提交请求。
-- **AI 接缝**：`AiChatClient` 定义了流式对话与情绪分析契约，当前 `app.ai.provider=mock` 使用确定性输出，接入真实模型时新增实现类并切换配置即可，业务代码无需改动。
+- **AI 接缝**：`AiChatClient` 定义了流式对话与情绪分析契约。默认 `app.ai.provider=mock` 使用确定性输出跑通链路；设 `app.ai.provider=deepseek` 并配置 `AI_API_KEY` 后，会切换到 `DeepSeekAiChatClient`（OpenAI 兼容 `/chat/completions` 协议），业务代码无需改动。
 
 ## 目录结构
 
@@ -170,7 +170,10 @@ Windows 下若 `psql` 未加入 PATH，可使用完整路径，例如：
 | `DB_PASSWORD` | `123456` | 数据库密码，生产环境必须覆盖 |
 | `JWT_SECRET` | 开发默认密钥 | HS256 密钥，生产环境必须覆盖 |
 | `UPLOAD_DIR` | `./uploads` | 上传文件存储目录 |
-| `AI_PROVIDER` | `mock` | 大模型提供方，接入真实模型后切换 |
+| `AI_PROVIDER` | `mock` | 大模型提供方，`mock` 或 `deepseek` |
+| `AI_API_KEY` | 空 | 对接 DeepSeek 的 API Key（`provider=deepseek` 时必填） |
+| `AI_BASE_URL` | `https://api.deepseek.com` | 兼容服务的 endpoints（可换 OpenAI / Qwen 等） |
+| `AI_MODEL` | `deepseek-chat` | 使用的模型名 |
 
 ### 3. 启动后端
 
@@ -293,7 +296,7 @@ mvn test
 
 ## 已知限制
 
-- AI 回复当前使用 **Mock 实现**，输出为确定性文案，仅用于跑通流式对话与情绪分析契约；接入真实大模型需实现 `AiChatClient` 并切换 `app.ai.provider`。
+- AI 回复默认使用 **Mock 实现**（确定性文案，用于跑通流式对话与情绪分析契约）；已提供 `DeepSeekAiChatClient` 真实对接实现，设置 `AI_PROVIDER=deepseek` 并配置 `AI_API_KEY` 即可切换。
 - 文件存储使用本地磁盘，尚未接入对象存储。
 - 未提供容器化部署与 CI 配置。
 

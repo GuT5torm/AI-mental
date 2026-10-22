@@ -33,7 +33,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { logout } from '@/api/gutts.js'
+import { logout } from '@/api/index.js'
 
 const router = useRouter()
 const iconUrl = new URL('@/assets/images/机器人.png', import.meta.url).href

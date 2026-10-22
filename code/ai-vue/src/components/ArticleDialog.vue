@@ -67,7 +67,7 @@
 <script setup>
 import { ref, reactive, computed, nextTick, watch } from 'vue'
 import { buttonNativeTypes, ElMessage,  } from 'element-plus'
-import { uploadFile, createArticle, updateArticle } from '@/api/gutts'
+import { uploadFile, createArticle, updateArticle } from '@/api/index'
 import { fileBaseUrl  } from '@/config/index.js'   
 import RichTextEditor from './RichTextEditor.vue'
 

@@ -74,7 +74,7 @@
 import { onMounted, ref, reactive } from 'vue';
 import { ElMessage } from 'element-plus'
 import PageHead from '@/components/PageHead.vue'
-import { getConsultationPage, getSessionDetail } from '@/api/gutts';
+import { getConsultationPage, getSessionDetail } from '@/api/index';
 
 const tableData = ref([])
 
