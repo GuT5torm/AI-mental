@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * AI 分析任务队列。
  *
  * <p>taskType 实测两种取值：AUTO（用户提交日记时自动创建）、ADMIN（管理端手动触发）。
- * status 实测为 COMPLETED，按设计另有待处理与失败态，由阶段 4 的任务消费者维护。
+ * status 实测为 COMPLETED，按设计另有待处理与失败态，由任务消费者维护。
  */
 @Data
 @TableName("ai_analysis_task")

@@ -97,7 +97,7 @@ public class EmotionDiaryFlowTest {
                 "diaryDate", "2026-01-05",
                 "moodScore", 8,
                 "dominantEmotion", "平静",
-                "diaryContent", "今天把阶段四的用例写完了"));
+                "diaryContent", "今天把本周的用例写完了"));
 
         EmotionDiary diary = diaryMapper.selectById(id);
         assertNotNull(diary);

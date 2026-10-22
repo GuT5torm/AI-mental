@@ -7,7 +7,7 @@ import java.util.function.Consumer;
 /**
  * 大模型能力抽象。
  *
- * <p>阶段 3 的流式对话与情绪分析都依赖外部模型，而选型（决策 D1）尚未确定。
+ * <p>流式对话与情绪分析都依赖外部模型，当前模型选型尚未最终确定。
  * 这里先把契约固定下来：真模型接入时只需再提供一个实现类并在
  * {@code app.ai.provider} 上切换，Controller 与 Service 不需要改动。
  *

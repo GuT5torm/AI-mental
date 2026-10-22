@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 心理咨询会话。
  *
  * <p>lastEmotionAnalysis 在库中为 jsonb，此处按原始 JSON 字符串读取，
- * 结构化解析在阶段 3 的会话情绪接口中完成。
+ * 结构化解析在会话情绪接口中完成。
  */
 @Data
 @TableName("consultation_session")
