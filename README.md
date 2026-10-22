@@ -174,6 +174,9 @@ Windows 下若 `psql` 未加入 PATH，可使用完整路径，例如：
 | `AI_API_KEY` | 空 | 对接 DeepSeek 的 API Key（`provider=deepseek` 时必填） |
 | `AI_BASE_URL` | `https://api.deepseek.com` | 兼容服务的 endpoints（可换 OpenAI / Qwen 等） |
 | `AI_MODEL` | `deepseek-chat` | 使用的模型名 |
+| `AI_TEMPERATURE` | `0.8` | 生成温度 |
+| `AI_MAX_TOKENS` | `2048` | 单次回复最大 token 数 |
+| `AI_TIMEOUT_SECONDS` | `60` | 请求超时（仅约束响应头到达前的等待） |
 
 ### 3. 启动后端
 

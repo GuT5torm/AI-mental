@@ -34,17 +34,21 @@ app:
     # 大模型提供方。当前使用 mock 实现跑通契约，
     # 接入真实模型后改为对应实现类的 havingValue（如 deepseek）
     provider: ${AI_PROVIDER:mock}
-    # 以下三项仅在 provider=deepseek 时生效，均走环境变量，勿写入仓库
+    # 以下六项仅在 provider=deepseek 时生效，均走环境变量，勿写入仓库
     api-key: ${AI_API_KEY:}
     base-url: ${AI_BASE_URL:https://api.deepseek.com}
     model: ${AI_MODEL:deepseek-chat}
+    temperature: ${AI_TEMPERATURE:0.8}
+    max-tokens: ${AI_MAX_TOKENS:2048}
+    # 只约束响应头到达前的等待，SSE 推送期间不生效
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
   upload:
     dir: ${UPLOAD_DIR:./uploads}
   file:
     url-prefix: /files
 
 jwt:
-  # HS256 要求密钥不少于 256 bit；生产环境请通过 JWT_SECRET 注入
-  secret: ${JWT_SECRET:OEMJA5w3msVs5cD/4h8FUHaqfCKvc2o8REl+BRAh3uFytH6Zhz+wFmwDWbDz3JAW}
+  # HS256 要求密钥不少于 256 bit（base64 编码后填入）；以下为仅用于本地开发的一次性默认值，生产环境必须通过 JWT_SECRET 注入
+  secret: ${JWT_SECRET:uwib3cviuwXm3IIdG1W6aAh6IK+Dh45oQFuk2D4qdFpSDnP/NpEytwiN1/L2L7Zk}
   # 有效期，单位毫秒，默认 2 小时
   expiration: 7200000

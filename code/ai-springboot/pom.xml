@@ -12,20 +12,7 @@
 	<artifactId>ai-springboot</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>ai-springboot</name>
-	<description>ai-springboot</description>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+	<description>AI 心理健康助手后端服务：流式对话、情绪日记、心理知识库与管理后台</description>
 	<properties>
 		<java.version>17</java.version>
 		<!-- 显式覆盖 Lombok 到最新，避免 JDK 版本不兼容 -->
