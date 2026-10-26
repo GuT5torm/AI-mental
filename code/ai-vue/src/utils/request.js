@@ -37,7 +37,12 @@ service.interceptors.response.use(
 
         const isLoginRequest = config.url?.includes('login')
         const token = localStorage.getItem('token')
-        if (String(data.code) === '-1' && token && !isLoginRequest) {
+        // 401（过滤器与业务层口径统一为字符串比较）说明登录态失效，清空并回到登录页
+        if (String(data.code) === '401' && !isLoginRequest) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('userInfo')
+            window.location.href = '/auth/login'
+        } else if (String(data.code) === '-1' && token && !isLoginRequest) {
             ElMessage.error(data.msg || '登录过期，请重新登录')
             localStorage.removeItem('token')
             localStorage.removeItem('userInfo')

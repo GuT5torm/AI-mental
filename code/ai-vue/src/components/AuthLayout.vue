@@ -5,7 +5,18 @@
             <div class="blob blob-2"></div>
             <div class="content">
                 <div class="brand">
-                    <el-image class="brand-logo" :src="brandIcon" alt="AI 心理健康助手" />
+                    <svg class="brand-heart" viewBox="0 0 100 100" aria-label="爱心">
+                        <defs>
+                            <linearGradient id="heartGradient" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#ff8fb0" />
+                                <stop offset="100%" stop-color="#ff5f85" />
+                            </linearGradient>
+                        </defs>
+                        <path
+                            d="M50 88 C20 64 8 46 8 30 C8 16 19 6 32 6 C40 6 46 10 50 16 C54 10 60 6 68 6 C81 6 92 16 92 30 C92 46 80 64 50 88 Z"
+                            fill="url(#heartGradient)" />
+                        <ellipse cx="32" cy="28" rx="9" ry="6" fill="rgba(255,255,255,0.55)" transform="rotate(-25 32 28)" />
+                    </svg>
                     <h2 class="title">心理健康 AI 助手</h2>
                     <p class="text">你的 AI 心灵伙伴，随时倾听、温暖陪伴</p>
                 </div>
@@ -37,10 +48,16 @@
 
 <script setup>
 const mascotUrl = new URL('@/assets/images/mascot.jpg', import.meta.url).href
-const brandIcon = new URL('@/assets/images/机器人.png', import.meta.url).href
 </script>
 
 <style scoped lang="scss">
+.brand-heart {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 6px 14px rgba(255, 95, 133, 0.45));
+}
+
 .robot-image {
     width: 100%;
     height: 100%;
@@ -101,12 +118,6 @@ const brandIcon = new URL('@/assets/images/机器人.png', import.meta.url).href
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-
-                .brand-logo {
-                    width: 56px;
-                    height: 56px;
-                    margin-bottom: 16px;
-                }
             }
 
             .title {

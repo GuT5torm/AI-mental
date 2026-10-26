@@ -24,8 +24,9 @@ export const getSessionEmotion = (sessionId) => {
     return service.get(`/psychological-chat/session/${sessionId}/emotion`)
 }
 
-export const addEmotionDiary = (data) => {
-    return service.post('/emotion-diary', data)
+// 当前用户自己的全部情绪记录（AI 咨询对话自动记录），按日期倒序
+export const getMyEmotionDiary = () => {
+    return service.get('/emotion-diary/my')
 }
 
 export const getKnowledgeList = (params) => {
@@ -33,4 +34,9 @@ export const getKnowledgeList = (params) => {
 }
 export const getKnowledgeDetail = (articleId) => {
     return service.get(`/knowledge/article/${articleId}`)
+}
+
+// AI 模式状态：用户自配 Key 与管理员全局 Key 任一存在即非演示模式
+export const getAiStatus = () => {
+    return service.get('/ai-config/status')
 }

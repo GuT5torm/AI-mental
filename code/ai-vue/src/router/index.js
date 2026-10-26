@@ -22,7 +22,7 @@ const backendRoutes = [
             {
                 path: 'knowledge',
                 component: Knowledge,
-                meta: { title: '知识文章', icon: 'Document' }
+                meta: { title: '文章管理', icon: 'Document' }
             },
             {
                 path: 'consultation',
@@ -33,6 +33,16 @@ const backendRoutes = [
                 path: 'emotional',
                 component: Emotional,
                 meta: { title: '情绪日志', icon: 'User' }
+            },
+            {
+                path: 'users',
+                component: () => import('@/views/users.vue'),
+                meta: { title: '用户管理', icon: 'UserFilled' }
+            },
+            {
+                path: 'ai-config',
+                component: () => import('@/views/aiConfig.vue'),
+                meta: { title: 'AI 配置', icon: 'MagicStick' }
             }
         ]
     },

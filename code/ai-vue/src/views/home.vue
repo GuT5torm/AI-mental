@@ -24,7 +24,7 @@
                             开始倾诉，获得陪伴
                         </el-button>
                         <el-button class="btn-ghost" size="large" round @click="goToEmotionDiary">
-                            记录心情，释放情感
+                            查看我的心情记录
                         </el-button>
                     </div>
                     <div class="hero-meta">

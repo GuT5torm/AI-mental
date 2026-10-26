@@ -1,6 +1,6 @@
 <template>
     <div>   
-        <PageHead title="知识文章">
+        <PageHead title="文章管理">
             <template #buttons>
                 <el-button @click=" handleEdit({}) " type="primary">新增</el-button>
             </template>
@@ -15,7 +15,7 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column label="分类" width="200">
+            <el-table-column label="分类" width="140">
                 <template #default="scope">
                     <div style="display: flex; align-items: center">
                         <el-icon><timer /></el-icon>
@@ -23,15 +23,22 @@
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column prop="authorName" label="作者" width="150"/>
-            <el-table-column prop="readCount" label="阅读量" width="150"/>
-            <el-table-column prop="updateAt" label="发布时间" width="150"/>
-            <el-table-column label="操作" width="240" fixed="right">
+            <el-table-column prop="authorName" label="作者" width="110"/>
+            <el-table-column prop="readCount" label="阅读量" width="90"/>
+            <el-table-column prop="updateAt" label="发布时间" width="170"/>
+            <el-table-column label="置顶" width="70" align="center">
                 <template #default="scope">
-                    <el-button @click="handleEdit(scope.row)" text type="primary">编辑</el-button>
-                    <el-button @click="handlePublish(scope.row)" v-if = "scope.row.status === 0 || scope.row.status === 2" type="success">发布</el-button>
-                    <el-button  @click="handleUnpublish(scope.row)" v-if = "scope.row.status === 1 " type="warning">下线</el-button>
-                    <el-button @click="handleDelete(scope.row)" text type="danger">删除</el-button>
+                    <el-tag v-if="scope.row.isTop === 1" type="danger" effect="light" size="small">置顶</el-tag>
+                    <span v-else style="color:#c0c4cc">-</span>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" width="300" fixed="right">
+                <template #default="scope">
+                    <el-button size="small" @click="handleEdit(scope.row)" text type="primary">编辑</el-button>
+                    <el-button size="small" @click="handlePublish(scope.row)" v-if = "scope.row.status === 0 || scope.row.status === 2" type="success">发布</el-button>
+                    <el-button size="small" @click="handleUnpublish(scope.row)" v-if = "scope.row.status === 1 " type="warning">下线</el-button>
+                    <el-button size="small" @click="handleTop(scope.row)" text :type="scope.row.isTop === 1 ? 'info' : 'warning'">{{ scope.row.isTop === 1 ? '取消置顶' : '置顶' }}</el-button>
+                    <el-button size="small" @click="handleDelete(scope.row)" text type="danger">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -49,7 +56,7 @@
 import { onMounted, ref, reactive } from 'vue'
 import PageHead from '@/components/PageHead.vue'
 import Tablesearch from '@/components/Tablesearch.vue'
-import { categoryTree, articlePage, getArticleDetail, changeArticleStatus, deleteArticle } from '@/api/index'
+import { categoryTree, articlePage, getArticleDetail, changeArticleStatus, changeArticleTop, deleteArticle } from '@/api/index'
 import ArticleDialog from '@/components/ArticleDialog.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
@@ -166,6 +173,14 @@ const handleUnpublish = (row) => {
         }).catch(err => {
             ElMessage.error(err?.response?.data?.msg || '下线失败')
         })
+    })
+}
+
+const handleTop = (row) => {
+    const top = row.isTop !== 1
+    changeArticleTop(row.id, top).then(() => {
+        ElMessage.success(top ? '置顶成功' : '已取消置顶')
+        handleSearch()
     })
 }
 

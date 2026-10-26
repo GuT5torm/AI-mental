@@ -96,7 +96,7 @@
                                 </div>
                             </div>
                             <div class="session-actions">
-                                <el-button text type="danger" size="mini" @click.stop="handleDeleteSession(session.id)">
+                                <el-button text type="danger" size="small" @click.stop="handleDeleteSession(session.id)">
                                     <el-icon>
                                         <DeleteFilled />
                                     </el-icon>
@@ -118,11 +118,25 @@
                         <p>真心为你</p>
                     </div>
                 </div>
-                <el-button circle @click="createNewFrontendSession" title="新建会话">
-                    <el-icon>
-                        <Plus />
-                    </el-icon>
-                </el-button>
+                <div class="header-actions">
+                    <el-button circle @click="createNewFrontendSession" title="新建会话">
+                        <el-icon>
+                            <Plus />
+                        </el-icon>
+                    </el-button>
+                </div>
+            </div>
+            <!-- 演示模式提示：未配置任何 Key 时展示，悬停图标查看说明 -->
+            <div v-if="aiStatusLoaded && demoMode" class="ai-config-banner">
+                <span class="banner-text">当前为演示模式回复</span>
+                <el-tooltip placement="bottom-end" effect="dark">
+                    <template #content>
+                        演示模式下 AI 返回预设内容。<br />
+                        管理员可在后台「AI 配置」保存全局 Key，<br />
+                        并在「用户管理」中为本账号开启真实模型。
+                    </template>
+                    <el-icon class="banner-help"><QuestionFilled /></el-icon>
+                </el-tooltip>
             </div>
             <!-- 聊天消息区域 -->
             <div class="chat-messages">
@@ -140,7 +154,17 @@
                 </div>
                 <!-- 消息列表 -->
                 <div v-for="msg in messages" :key="msg.id" class="message-item"
-                    :class="msg.senderType === 1 ? 'user-message' : 'ai-message'">
+                    :class="msg.senderType === 1 ? 'user-message' : (msg.senderType === 3 ? 'capture-message' : 'ai-message')">
+                    <!-- 情绪自动记录提示卡 -->
+                    <div v-if="msg.senderType === 3" class="emotion-capture-card">
+                        <span class="capture-icon">💙</span>
+                        <div class="capture-body">
+                            <span class="capture-text">{{ msg.content }}</span>
+                            <span v-for="kw in msg.keywords" :key="kw" class="capture-keyword">{{ kw }}</span>
+                        </div>
+                        <router-link to="/emotion-diary" class="capture-link">查看情绪记录</router-link>
+                    </div>
+                    <template v-else>
                     <div class="message-avatar">
                         <el-image v-if="msg.senderType === 1" style="width: 18px; height: 18px;"
                             :src="iconUrl3"></el-image>
@@ -167,6 +191,7 @@
                         <div class="message-time">{{ msg.senderType === 2 && isAiTyping ? "正在输入中..." : msg.createdAt }}
                         </div>
                     </div>
+                    </template>
                 </div>
             </div>
             <!-- 消息输入区域 -->
@@ -193,13 +218,28 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ChatRound, Clock, DeleteFilled, Plus, Promotion } from '@element-plus/icons-vue'
-import { startSession, getSessionList, deleteSession, getSessionDetail, getSessionEmotion } from '@/api/frontend.js'
+import { ChatRound, Clock, DeleteFilled, Plus, Promotion, QuestionFilled } from '@element-plus/icons-vue'
+import { startSession, getSessionList, deleteSession, getSessionDetail, getSessionEmotion, getAiStatus } from '@/api/frontend.js'
 import { ElMessage } from 'element-plus'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 
-const iconUrl1 = new URL('@/assets/images/doraemon.jpg', import.meta.url).href
+// 演示模式提示：用户自配 Key 与管理员全局 Key 都未配置时展示
+const demoMode = ref(false)
+const aiStatusLoaded = ref(false)
+
+const loadAiConfigStatus = async () => {
+    try {
+        const data = await getAiStatus()
+        demoMode.value = !!data.demoMode
+        aiStatusLoaded.value = true
+    } catch (err) {
+        // 状态拉取失败不打扰用户，仅隐藏提示条
+        aiStatusLoaded.value = false
+    }
+}
+
+const iconUrl1 = new URL('@/assets/images/ai-avatar.jpg', import.meta.url).href
 const iconUrl2 = new URL('@/assets/images/like.png', import.meta.url).href
 const iconUrl3 = new URL('@/assets/images/users.png', import.meta.url).href
 
@@ -419,6 +459,24 @@ const startAIResponse = (sessionId, userMessage) => {
                 loadSessionEmotion(currentSession.value.sessionId)
                 return
             }
+            //情绪自动记录提示：命中关键词时后端在AI正文前推此事件
+            if (eventName === 'emotion_captured') {
+                try {
+                    const payload = JSON.parse(raw)
+                    if (String(payload.code) === '200' && payload.data) {
+                        messages.value.splice(messages.value.length - 1, 0, {
+                            id: `emotion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            senderType: 3,
+                            content: payload.data.hint || '检测到情绪波动，已为你记录',
+                            keywords: payload.data.matchedKeywords || [],
+                            createdAt: new Date().toLocaleTimeString()
+                        })
+                    }
+                } catch (e) {
+                    console.warn('情绪记录事件解析失败', e)
+                }
+                return
+            }
             const payload = JSON.parse(raw)
             const ok = String(payload.code) === '200'
             if (ok && payload.data && payload.data.content) {
@@ -502,6 +560,8 @@ onMounted(() => {
     getSessionPage()
     //初始化时创建一个新的会话
     createNewFrontendSession()
+    //拉取自配 Key 状态，决定演示模式引导条是否显示
+    loadAiConfigStatus()
 })
 
 </script>
@@ -534,8 +594,8 @@ onMounted(() => {
             transition: all 0.3s ease;
 
             .breathing-circle {
-                width: 60px;
-                height: 60px;
+                width: 84px;
+                height: 84px;
                 background: linear-gradient(135deg, #4a9ee0 0%, #2e6fc0 100%);
                 border-radius: 50%;
                 overflow: hidden;
@@ -946,6 +1006,43 @@ onMounted(() => {
             position: relative;
             flex-shrink: 0;
 
+            .header-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .ai-config-banner {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                z-index: 5;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                padding: 7px 24px;
+                background: linear-gradient(135deg, #fff8e6 0%, #fff3d6 100%);
+                border-bottom: 1px solid #f5e3b3;
+
+                .banner-text {
+                    font-size: 12px;
+                    color: #8a6d1d;
+                }
+
+                .banner-help {
+                    font-size: 14px;
+                    color: #b8860b;
+                    cursor: help;
+                    transition: color 0.2s;
+
+                    &:hover {
+                        color: #8a6d1d;
+                    }
+                }
+            }
+
             .header-left {
                 display: flex;
                 align-items: center;
@@ -997,8 +1094,8 @@ onMounted(() => {
                 gap: 12px;
 
                 .message-avatar {
-                    width: 32px;
-                    height: 32px;
+                    width: 44px;
+                    height: 44px;
                     border-radius: 50%;
                     overflow: hidden;
                     display: flex;
@@ -1113,6 +1210,55 @@ onMounted(() => {
                 transition: all 0.3s ease;
             }
 
+        }
+
+        // 情绪自动记录提示卡：居中系统条样式，区别于聊天气泡
+        .capture-message {
+            justify-content: center;
+
+            .emotion-capture-card {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                max-width: 85%;
+                padding: 10px 16px;
+                border-radius: 12px;
+                background: linear-gradient(135deg, #eef6ff 0%, #e3f0fc 100%);
+                border: 1px solid #c8e0f5;
+                font-size: 13px;
+                color: #2c5f8f;
+
+                .capture-icon {
+                    font-size: 16px;
+                }
+
+                .capture-body {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    flex-wrap: wrap;
+                }
+
+                .capture-keyword {
+                    padding: 1px 8px;
+                    border-radius: 8px;
+                    background: rgba(74, 158, 224, 0.15);
+                    color: #2e6fc0;
+                    font-size: 12px;
+                }
+
+                .capture-link {
+                    color: #2e6fc0;
+                    font-weight: 600;
+                    text-decoration: none;
+                    white-space: nowrap;
+                    margin-left: 4px;
+
+                    &:hover {
+                        text-decoration: underline;
+                    }
+                }
+            }
         }
 
     }

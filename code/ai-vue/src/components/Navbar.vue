@@ -1,9 +1,10 @@
 <template>
     <div class="navbar">
         <div class="flex-box">
-            <el-button @click="handleCollapse">
+            <el-button class="collapse-btn" :title="layoutStore.isCollapse ? '展开侧边栏' : '收起侧边栏'" @click="handleCollapse">
                 <el-icon>
-                    <Expand />
+                    <Expand v-if="layoutStore.isCollapse" />
+                    <Fold v-else />
                 </el-icon>
             </el-button>
             <p class="page-title">{{ route.meta.title }}</p>
@@ -36,6 +37,7 @@ import { logout } from '@/api/index.js'
 
 const router = useRouter()
 const route = useRoute()
+const layoutStore = useLayoutStore()
 
 // 右上角显示当前登录用户的昵称，缺省时回退为中性名
 const nickname = computed(() => {
@@ -67,7 +69,7 @@ const handleCommand = (command) => {
 
 }
 const handleCollapse = () => {
-    useLayoutStore().toggleCollapse()
+    layoutStore.toggleCollapse()
 }
 
 </script>
@@ -94,6 +96,18 @@ const handleCollapse = () => {
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+    .collapse-btn {
+        border: none;
+        padding: 8px 10px;
+        font-size: 18px;
+        color: #4b5563;
+
+        &:hover {
+            color: #6a52c9;
+            background: rgba(106, 82, 201, 0.08);
+        }
     }
 
     .page-title {

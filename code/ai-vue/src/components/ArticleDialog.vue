@@ -38,7 +38,7 @@
                         <img v-else :src="imgUrl" class="cover-image" alt="封面图片"/>
                     </el-upload>
                     <div v-if="imgUrl" class="cover-remove" >
-                        <el-button type="danger" size="mini" @click="handleRemove">移除封面</el-button>
+                        <el-button type="danger" size="small" @click="handleRemove">移除封面</el-button>
                     </div>
                 </div> 
             </el-form-item>

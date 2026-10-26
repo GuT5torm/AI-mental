@@ -2,14 +2,14 @@
     <div class="frontend-layout">
         <div class="navbar-container">
             <div class="brand-section">
-                <el-image style="width: 50px; height: 50px" :src="iconUrl" alt="品牌logo" class="brand-logo" />
+                <el-image style="width: 50px; height: 50px" :src="iconUrl" alt="品牌logo" fit="cover" class="brand-logo" />
                 <h1 class="brand-name">心理健康AI助手</h1>
             </div>
             <div class="nav-section">
                 <router-link to="/" class="nav-link" >首页</router-link>
                 <router-link to="/consultations" class="nav-link" v-if="isLoggedIn">AI咨询</router-link>
-                <router-link to="/emotion-diary" class="nav-link" v-if="isLoggedIn">情绪日记</router-link>
-                <router-link to="/knowledge" class="nav-link" >知识库</router-link>
+                <router-link to="/emotion-diary" class="nav-link" v-if="isLoggedIn">我的心情</router-link>
+                <router-link to="/knowledge" class="nav-link" >心灵课堂</router-link>
                 <el-button class="logout-btn" v-if="isLoggedIn" @click="handleLogout">退出登录</el-button>
                 <template v-else>
                     <router-link to="/auth/login" class="nav-link">登录</router-link>
@@ -36,7 +36,7 @@ import { useRouter } from 'vue-router'
 import { logout } from '@/api/index.js'
 
 const router = useRouter()
-const iconUrl = new URL('@/assets/images/机器人.png', import.meta.url).href
+const iconUrl = new URL('@/assets/images/nav-avatar.jpg', import.meta.url).href
 
 const isLoggedIn = ref(false)
 

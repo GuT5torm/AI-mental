@@ -3,7 +3,7 @@
         <div class="header-section">
             <div class="header-content">
                 <el-image :src="iconUrl" style="width: 60px;height: 60px"></el-image>
-                <h1>知识文章详情</h1>
+                <h1>文章详情</h1>
             </div>
         </div>
         <div class="content">

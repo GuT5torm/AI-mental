@@ -22,20 +22,23 @@ import Sidebar from './Sidebar.vue'
 <style lang="scss" scoped>
 .backend-layout {
   height: 100vh;
+  background-color: #f5f7fa;
   .el-header {
-    height: 74px !important;
+    height: 64px !important;
     background-color: #fff;
-    box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 1px 4px rgba(0, 21, 41, 0.06);
+    border-bottom: 1px solid #eef0f4;
   }
   .main-container {
     height: 100%;
-    .content-container {
-      height: 100%;
-      overflow-y: auto;
+    .main-content {
       padding: 20px;
-      background-color: #fff;
-      min-height: calc(100% - 74px);
+      background-color: #f5f7fa;
+      .content-container {
+        height: 100%;
+        overflow-y: auto;
+        background-color: transparent;
+      }
     }
   }
 }
