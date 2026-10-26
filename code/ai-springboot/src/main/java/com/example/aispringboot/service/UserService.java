@@ -1,9 +1,16 @@
 package com.example.aispringboot.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.aispringboot.DTO.command.UserAdminCreateCommandDTO;
+import com.example.aispringboot.DTO.command.UserAdminPageQuery;
+import com.example.aispringboot.DTO.command.UserAdminUpdateCommandDTO;
 import com.example.aispringboot.DTO.command.UserLoginCommandDTO;
 import com.example.aispringboot.DTO.command.UserRegisterCommandDTO;
+import com.example.aispringboot.DTO.response.UserAdminResponseDTO;
 import com.example.aispringboot.DTO.response.UserLoginResponseDTO;
+import com.example.aispringboot.common.AuthUtil;
 import com.example.aispringboot.common.BusinessException;
 import com.example.aispringboot.common.JwtUtil;
 import com.example.aispringboot.common.RateLimiter;
@@ -12,6 +19,7 @@ import com.example.aispringboot.common.ResultCode;
 import com.example.aispringboot.entity.User;
 import com.example.aispringboot.mapper.UserMapper;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +32,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 
+@Slf4j
 @Service
 public class UserService {
 
@@ -197,5 +206,156 @@ public class UserService {
             return attrs.getRequest().getRemoteAddr();
         }
         return "unknown";
+    }
+
+    // ==================== 后台用户管理 ====================
+
+    /** 后台新增用户的默认初始密码，与重置密码一致 */
+    private static final String DEFAULT_ADMIN_PASSWORD = "Abc@123456";
+
+    private static String trimToNull(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    /**
+     * 后台直接新增用户：用户名/邮箱唯一，密码留空时使用默认初始密码。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public UserAdminResponseDTO adminCreate(UserAdminCreateCommandDTO command) {
+        AuthUtil.requireAdmin();
+        String username = command.getUsername().trim();
+        if (userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getUsername, username)) > 0) {
+            throw new BusinessException(ResultCode.ACCOUNT_SAME.getCode(), "用户名已存在");
+        }
+        String email = trimToNull(command.getEmail());
+        if (email != null
+                && userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getEmail, email)) > 0) {
+            throw new BusinessException(ResultCode.ACCOUNT_SAME.getCode(), "邮箱已被注册");
+        }
+
+        User user = new User();
+        user.setUsername(username);
+        String password = command.getPassword() == null || command.getPassword().isBlank()
+                ? DEFAULT_ADMIN_PASSWORD : command.getPassword().trim();
+        user.setPassword(passwordEncoder.encode(password));
+        user.setNickname(trimToNull(command.getNickname()));
+        user.setEmail(email);
+        user.setPhone(trimToNull(command.getPhone()));
+        user.setGender(command.getGender() == null ? 0 : command.getGender());
+        user.setUserType(command.getUserType() == null ? USER_TYPE_NORMAL : command.getUserType());
+        user.setStatus(STATUS_NORMAL);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        userMapper.insert(user);
+        log.info("管理员新增用户 {}（角色={}）", username, user.getUserType());
+        return toAdminResponse(user);
+    }
+
+    /**
+     * 后台分页查询用户，关键词模糊匹配用户名/昵称/邮箱。
+     */
+    public IPage<UserAdminResponseDTO> adminPage(UserAdminPageQuery query) {
+        AuthUtil.requireAdmin();
+
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        if (query.getKeyword() != null && !query.getKeyword().isBlank()) {
+            String kw = query.getKeyword().trim();
+            wrapper.and(w -> w.like(User::getUsername, kw)
+                    .or().like(User::getNickname, kw)
+                    .or().like(User::getEmail, kw));
+        }
+        if (query.getStatus() != null) {
+            wrapper.eq(User::getStatus, query.getStatus());
+        }
+        wrapper.orderByAsc(User::getId);
+
+        IPage<User> page = userMapper.selectPage(
+                new Page<>(query.getCurrent(), query.getSizeValue()), wrapper);
+        return page.convert(this::toAdminResponse);
+    }
+
+    /**
+     * 启用/禁用用户。不能操作自己的账号，避免管理员把自己锁在门外。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateStatus(Long id, Integer status) {
+        AuthUtil.requireAdmin();
+        if (id.equals(AuthUtil.requireUserId())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不能修改自己的状态");
+        }
+        User user = requireUser(id);
+        user.setStatus(status);
+        userMapper.updateById(user);
+    }
+
+    /**
+     * 后台编辑用户资料：昵称/邮箱/电话/性别/角色/真实模型开关。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateByAdmin(Long id, UserAdminUpdateCommandDTO command) {
+        AuthUtil.requireAdmin();
+        User user = requireUser(id);
+
+        if (command.getNickname() != null) {
+            user.setNickname(command.getNickname().isBlank() ? null : command.getNickname().trim());
+        }
+        if (command.getEmail() != null) {
+            user.setEmail(command.getEmail().isBlank() ? null : command.getEmail().trim());
+        }
+        if (command.getPhone() != null) {
+            user.setPhone(command.getPhone().isBlank() ? null : command.getPhone().trim());
+        }
+        if (command.getGender() != null) {
+            user.setGender(command.getGender());
+        }
+        if (command.getUserType() != null) {
+            if (id.equals(AuthUtil.requireUserId()) && command.getUserType() != USER_TYPE_ADMIN) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "不能降级自己的角色");
+            }
+            user.setUserType(command.getUserType());
+        }
+        if (command.getAiRealEnabled() != null) {
+            user.setAiRealEnabled(command.getAiRealEnabled());
+        }
+        userMapper.updateById(user);
+    }
+
+    /**
+     * 重置密码为固定初始值（Abc@123456），与注册校验规则一致。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPassword(Long id) {
+        AuthUtil.requireAdmin();
+        User user = requireUser(id);
+        user.setPassword(passwordEncoder.encode("Abc@123456"));
+        userMapper.updateById(user);
+    }
+
+    private User requireUser(Long id) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "用户不存在");
+        }
+        return user;
+    }
+
+    private UserAdminResponseDTO toAdminResponse(User user) {
+        UserAdminResponseDTO dto = new UserAdminResponseDTO();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setNickname(user.getNickname());
+        dto.setEmail(user.getEmail());
+        dto.setPhone(user.getPhone());
+        dto.setAvatar(user.getAvatar());
+        dto.setGender(user.getGender());
+        dto.setUserType(user.getUserType());
+        dto.setStatus(user.getStatus());
+        dto.setAiRealEnabled(user.getAiRealEnabled() == null ? 1 : user.getAiRealEnabled());
+        dto.setCreatedAt(user.getCreatedAt());
+        return dto;
     }
 }
