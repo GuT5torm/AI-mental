@@ -55,6 +55,9 @@ public class AiAnalysisTaskService {
     private EmotionDiaryMapper diaryMapper;
 
     @Resource
+    private UserAiConfigService userAiConfigService;
+
+    @Resource
     private AiChatClient aiChatClient;
 
     @Resource
@@ -124,7 +127,9 @@ public class AiAnalysisTaskService {
             throw new IllegalStateException("关联的日记不存在，diaryId=" + task.getDiaryId());
         }
 
-        Map<String, Object> emotion = aiChatClient.analyzeEmotion(buildPrompt(diary));
+        // 日记归属用户的自配 Key 优先，其次管理员全局 Key；都没有时走服务端默认实现
+        Map<String, Object> emotion = aiChatClient.analyzeEmotion(buildPrompt(diary),
+                userAiConfigService.resolveOptionsWithFallback(diary.getUserId()));
         String json = toJson(emotion);
 
         diaryMapper.update(null, Wrappers.lambdaUpdate(EmotionDiary.class)

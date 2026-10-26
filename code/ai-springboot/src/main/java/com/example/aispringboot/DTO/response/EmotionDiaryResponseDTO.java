@@ -46,6 +46,9 @@ public class EmotionDiaryResponseDTO {
     /** AI 分析结果的 JSON 字符串，未分析时为 null */
     private String aiEmotionAnalysis;
 
+    /** 记录来源：CHAT=AI咨询对话自动记录，MANUAL=手动填写，NULL视为MANUAL */
+    private String source;
+
     private LocalDateTime aiAnalysisUpdatedAt;
 
     private LocalDateTime createdAt;

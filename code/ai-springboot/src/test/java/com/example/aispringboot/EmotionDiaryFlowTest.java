@@ -13,7 +13,6 @@ import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -27,15 +26,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 情绪日记与 AI 分析任务队列的端到端校验。
+ * 情绪日记的端到端校验。
  *
  * <p>库里既有 17 条日记，全部属于 user_id=2（9 条，用户名 test）与 user_id=4（8 条，用户名 ces），
  * 另有 14 条 COMPLETED 任务。用例全部标了 @Transactional，跑完回滚，不会留下脏数据。
+ *
+ * <p>手动提交接口已移除——情绪记录的唯一录入途径是 AI 咨询对话自动记录，
+ * 需要造数据时直接调 {@code createDiaryFromChat}（会同步投递分析任务）或 insert 实体。
  *
  * <p>定时器在这里被显式关掉：AI 任务消费者会真实写库，
  * 若沿用默认配置，它可能在断言期间改掉被测数据。消费逻辑改为直接调用
@@ -64,6 +65,8 @@ public class EmotionDiaryFlowTest {
     private AiAnalysisTaskMapper taskMapper;
     @Resource
     private AiAnalysisTaskService taskService;
+    @Resource
+    private com.example.aispringboot.service.EmotionDiaryService diaryService;
 
     /** 普通用户 */
     private String userToken() {
@@ -75,95 +78,24 @@ public class EmotionDiaryFlowTest {
         return jwtUtil.generateToken(1L, 2);
     }
 
-    private String json(Object o) throws Exception {
-        return objectMapper.writeValueAsString(o);
-    }
-
-    private long submitDiary(Map<String, Object> body) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/emotion-diary")
-                        .header("token", userToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(body)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"))
-                .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("data").asLong();
-    }
-
     @Test
     @Transactional(rollbackFor = Exception.class)
-    public void 提交日记_落库并生成一条PENDING任务() throws Exception {
-        long id = submitDiary(Map.of(
-                "diaryDate", "2026-01-05",
-                "moodScore", 8,
-                "dominantEmotion", "平静",
-                "diaryContent", "今天把本周的用例写完了"));
-
-        EmotionDiary diary = diaryMapper.selectById(id);
-        assertNotNull(diary);
-        assertEquals(2L, diary.getUserId());
-        assertEquals(8, diary.getMoodScore());
-        assertEquals("2026-01-05", diary.getDiaryDate().toString());
-
-        List<AiAnalysisTask> tasks = taskMapper.selectList(
-                Wrappers.lambdaQuery(AiAnalysisTask.class).eq(AiAnalysisTask::getDiaryId, id));
-        assertEquals(1, tasks.size());
-        assertEquals("AUTO", tasks.get(0).getTaskType());
-        assertEquals("PENDING", tasks.get(0).getStatus());
-        assertEquals(2, tasks.get(0).getPriority());
-        assertEquals(0, tasks.get(0).getRetryCount());
-        assertEquals(3, tasks.get(0).getMaxRetryCount());
-    }
-
-    @Test
-    @Transactional(rollbackFor = Exception.class)
-    public void 未填日期时兜底为今天() throws Exception {
-        long id = submitDiary(Map.of("moodScore", 5));
+    public void 对话自动记录_未填日期时兜底为今天() {
+        long id = diaryService.createDiaryFromChat(2L, 999041L, "今天有点焦虑", List.of("焦虑"), 3);
         EmotionDiary diary = diaryMapper.selectById(id);
         assertEquals(java.time.LocalDate.now(), diary.getDiaryDate());
     }
 
     @Test
     @Transactional(rollbackFor = Exception.class)
-    public void 未登录提交返回401() throws Exception {
-        mockMvc.perform(post("/api/emotion-diary")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("moodScore", 5))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("401"));
-    }
-
-    @Test
-    @Transactional(rollbackFor = Exception.class)
-    public void 缺少情绪评分返回400() throws Exception {
-        mockMvc.perform(post("/api/emotion-diary")
-                        .header("token", userToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("diaryContent", "没有评分"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("400"))
-                .andExpect(jsonPath("$.data").value("请选择情绪评分"));
-    }
-
-    @Test
-    @Transactional(rollbackFor = Exception.class)
-    public void 情绪评分越界返回400() throws Exception {
-        mockMvc.perform(post("/api/emotion-diary")
-                        .header("token", userToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("moodScore", 11))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("400"));
-    }
-
-    @Test
-    @Transactional(rollbackFor = Exception.class)
     public void 后台分页_返回用户名与昵称() throws Exception {
-        // 用自己提交的一条做基准，避免断言依赖既有数据的排序
-        submitDiary(Map.of(
-                "diaryDate", "2026-01-06",
-                "moodScore", 7,
-                "diaryContent", "校验列表行是否带上用户名"));
+        // 用自己插入的一条做基准，避免断言依赖既有数据的排序
+        EmotionDiary base = new EmotionDiary();
+        base.setUserId(2L);
+        base.setDiaryDate(java.time.LocalDate.of(2026, 1, 6));
+        base.setMoodScore(7);
+        base.setDiaryContent("校验列表行是否带上用户名");
+        diaryMapper.insert(base);
 
         MvcResult result = mockMvc.perform(get("/api/emotion-diary/admin/page")
                         .param("currentPage", "1")
@@ -219,11 +151,8 @@ public class EmotionDiaryFlowTest {
     @Test
     @Transactional(rollbackFor = Exception.class)
     public void 任务消费_回填分析结果并置为COMPLETED() throws Exception {
-        long diaryId = submitDiary(Map.of(
-                "moodScore", 3,
-                "dominantEmotion", "焦虑",
-                "emotionTriggers", "考试",
-                "diaryContent", "明天考试，复习不完，很焦虑"));
+        long diaryId = diaryService.createDiaryFromChat(2L, 999042L,
+                "明天考试，复习不完，很焦虑", List.of("焦虑"), 3);
 
         int processed = taskService.processPendingTasks();
         assertTrue(processed >= 1, "应至少消费掉刚提交的任务");
@@ -260,7 +189,7 @@ public class EmotionDiaryFlowTest {
     @Test
     @Transactional(rollbackFor = Exception.class)
     public void 删除日记_连带清理其分析任务() throws Exception {
-        long diaryId = submitDiary(Map.of("moodScore", 6));
+        long diaryId = diaryService.createDiaryFromChat(2L, 999043L, "最近压力很大", List.of("压力大"), 3);
 
         mockMvc.perform(delete("/api/emotion-diary/admin/" + diaryId)
                         .header("token", adminToken()))

@@ -2,22 +2,16 @@ package com.example.aispringboot;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.example.aispringboot.ai.AiChatClient;
-import com.example.aispringboot.common.JwtUtil;
 import com.example.aispringboot.entity.AiAnalysisTask;
 import com.example.aispringboot.entity.EmotionDiary;
 import com.example.aispringboot.mapper.AiAnalysisTaskMapper;
 import com.example.aispringboot.mapper.EmotionDiaryMapper;
 import com.example.aispringboot.service.AiAnalysisTaskService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -26,11 +20,9 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * AI 分析任务的重试与失败记账。
@@ -44,36 +36,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 真实场景下唯一能走到重试的就是模型调用失败，用例正是这么构造的。
  */
 @SpringBootTest
-@AutoConfigureMockMvc
 @TestPropertySource(properties = "app.ai.scheduler.enabled=false")
 public class AiAnalysisTaskRetryTest {
 
-    @Resource
-    private MockMvc mockMvc;
-    @Resource
-    private ObjectMapper objectMapper;
-    @Resource
-    private JwtUtil jwtUtil;
     @Resource
     private EmotionDiaryMapper diaryMapper;
     @Resource
     private AiAnalysisTaskMapper taskMapper;
     @Resource
     private AiAnalysisTaskService taskService;
+    @Resource
+    private com.example.aispringboot.service.EmotionDiaryService diaryService;
 
     /** 替换掉 MockAiChatClient，让每次分析都抛异常 */
     @MockitoBean
     private AiChatClient aiChatClient;
 
-    private long submitDiary() throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/emotion-diary")
-                        .header("token", jwtUtil.generateToken(2L, 1))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("moodScore", 5))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"))
-                .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("data").asLong();
+    /** 手动提交接口已移除，直接走 AI 咨询自动记录链路造一条日记 + 任务 */
+    private long submitDiary() {
+        return diaryService.createDiaryFromChat(2L, 999044L, "最近压力很大", List.of("压力大"), 3);
     }
 
     private AiAnalysisTask taskOf(long diaryId) {
@@ -86,7 +67,7 @@ public class AiAnalysisTaskRetryTest {
     @Test
     @Transactional(rollbackFor = Exception.class)
     public void 模型调用失败_累加重试次数直到上限才置FAILED() throws Exception {
-        when(aiChatClient.analyzeEmotion(anyList()))
+        when(aiChatClient.analyzeEmotion(anyList(), any()))
                 .thenThrow(new IllegalStateException("模型调用超时"));
 
         long diaryId = submitDiary();
@@ -114,7 +95,7 @@ public class AiAnalysisTaskRetryTest {
     @Test
     @Transactional(rollbackFor = Exception.class)
     public void 失败后恢复_同一条任务可以重新消费成功() throws Exception {
-        when(aiChatClient.analyzeEmotion(anyList()))
+        when(aiChatClient.analyzeEmotion(anyList(), any()))
                 .thenThrow(new IllegalStateException("模型限流"))
                 .thenReturn(Map.of(
                         "primaryEmotion", "平静",

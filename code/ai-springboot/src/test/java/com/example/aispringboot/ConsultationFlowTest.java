@@ -42,7 +42,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = "app.ai.scheduler.enabled=false")
+@TestPropertySource(properties = {
+        "app.ai.scheduler.enabled=false",
+        "app.emotion-capture.enabled=false"
+})
 public class ConsultationFlowTest {
 
     @Resource

@@ -1,7 +1,6 @@
 package com.example.aispringboot.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.example.aispringboot.DTO.command.EmotionDiaryCommandDTO;
 import com.example.aispringboot.DTO.command.EmotionDiaryPageQuery;
 import com.example.aispringboot.DTO.response.EmotionDiaryResponseDTO;
 import com.example.aispringboot.common.Result;
@@ -11,19 +10,17 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 情绪日记。
  *
- * <p>提交接口走前台（api/frontend.js 的 /emotion-diary），需要登录但不要求管理员；
+ * <p>情绪记录的唯一录入途径是 AI 咨询对话（命中关键词自动记录，来源 CHAT），
+ * 这里只提供查询与后台管理接口：/my 供前台"我的心情"页查看自己的记录；
  * 分页与删除走后台（api/gutts.js 的 /emotion-diary/admin/*），必须是管理员。
- *
- * <p>提交不返回分析结果——分析是异步任务，提交瞬间还没有结果。
- * 前端 emotionDiary.vue 只弹"提交成功"，后台列表稍后能看到回填的结构化数据。
  */
 @RestController
 @RequestMapping("/api/emotion-diary")
@@ -33,11 +30,11 @@ public class EmotionDiaryController {
     private EmotionDiaryService emotionDiaryService;
 
     /**
-     * 提交日记。返回新日记主键，同时入队一条 AUTO 类型的 AI 分析任务。
+     * 当前用户自己的情绪记录列表——情绪日记页作为"观看自己心情"页面的数据接口。
      */
-    @PostMapping
-    public Result<Long> create(@Valid @RequestBody EmotionDiaryCommandDTO command) {
-        return Result.ok(emotionDiaryService.createDiary(command));
+    @GetMapping("/my")
+    public Result<List<EmotionDiaryResponseDTO>> my() {
+        return Result.ok(emotionDiaryService.myDiaries());
     }
 
     @GetMapping("/admin/page")

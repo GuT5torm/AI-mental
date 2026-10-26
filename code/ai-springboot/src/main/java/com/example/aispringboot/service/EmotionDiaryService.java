@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.example.aispringboot.DTO.command.EmotionDiaryCommandDTO;
 import com.example.aispringboot.DTO.command.EmotionDiaryPageQuery;
 import com.example.aispringboot.DTO.response.EmotionDiaryResponseDTO;
 import com.example.aispringboot.common.AuthUtil;
@@ -32,9 +31,11 @@ import java.util.stream.Collectors;
 /**
  * 情绪日记。
  *
- * <p>提交日记不直接调模型，而是写一条 {@code ai_analysis_task}（{@code task_type=AUTO}、
- * {@code status=PENDING}）交给消费者异步处理——ai_analysis_task 表的 14 条既有数据
- * 全部是 COMPLETED，说明这套结构原本就是按任务队列设计的。
+ * <p>情绪记录的唯一录入途径是 AI 咨询对话：消息命中关键词时写一条记录
+ * （source=CHAT），同时写 {@code ai_analysis_task}（{@code task_type=AUTO}、
+ * {@code status=PENDING}）交给消费者异步处理——ai_analysis_task 表的既有数据
+ * 说明这套结构原本就是按任务队列设计的。存量手动填写的记录 source 为空，
+ * 查看时按 MANUAL 语义处理。
  *
  * <p>列表页需要 username / nickname。这里不写联表 SQL，而是分页查主表后按 user_id
  * 批量回查：分页插件的 COUNT 改写遇到 JOIN + ORDER BY 容易生成非法 SQL，
@@ -51,6 +52,9 @@ public class EmotionDiaryService {
     public static final String TASK_STATUS_PENDING = "PENDING";
     public static final int DEFAULT_MAX_RETRY = 3;
 
+    /** 记录来源：AI咨询对话自动记录（唯一录入途径；存量手动数据 source 为空） */
+    public static final String SOURCE_CHAT = "CHAT";
+
     @Resource
     private EmotionDiaryMapper diaryMapper;
 
@@ -61,23 +65,44 @@ public class EmotionDiaryService {
     private UserMapper userMapper;
 
     /**
-     * 提交日记。
+     * AI 咨询对话触发的自动记录：消息命中关键词时调用。
+     *
+     * <p>这是情绪记录的唯一录入途径。SSE 推流跑在线程池里，没有请求上下文
+     * （AuthUtil 取不到用户），所以 userId、会话ID 由调用方显式传入。
+     * 正文即用户消息原文，触发因素记命中词；评分取配置默认分，其余字段留空，
+     * 交给 ai_analysis_task 异步评估回填 ai_emotion_analysis。
      *
      * @return 新日记主键
      */
     @Transactional(rollbackFor = Exception.class)
-    public Long createDiary(EmotionDiaryCommandDTO command) {
-        Long userId = AuthUtil.requireUserId();
-
+    public Long createDiaryFromChat(Long userId, Long sessionId, String message,
+                                    List<String> matchedKeywords, Integer defaultMoodScore) {
         EmotionDiary diary = new EmotionDiary();
         diary.setUserId(userId);
-        diary.setDiaryDate(command.getDiaryDate() == null ? LocalDate.now() : command.getDiaryDate());
-        diary.setMoodScore(command.getMoodScore());
-        diary.setDominantEmotion(blankToNull(command.getDominantEmotion()));
-        diary.setEmotionTriggers(blankToNull(command.getEmotionTriggers()));
-        diary.setDiaryContent(blankToNull(command.getDiaryContent()));
-        diary.setSleepQuality(command.getSleepQuality());
-        diary.setStressLevel(command.getStressLevel());
+        diary.setDiaryDate(LocalDate.now());
+        diary.setMoodScore(defaultMoodScore);
+        diary.setEmotionTriggers("AI咨询对话触发：关键词「" + String.join("、", matchedKeywords) + "」");
+        diary.setDiaryContent(message);
+        diary.setSource(SOURCE_CHAT);
+        diary.setSourceSessionId(sessionId);
+        return insertDiaryWithTask(diary, userId);
+    }
+
+    /**
+     * 同一会话是否已产生过 CHAT 来源记录（同会话仅记录一次）。
+     */
+    public boolean hasChatCapture(Long sessionId) {
+        return diaryMapper.selectCount(Wrappers.lambdaQuery(EmotionDiary.class)
+                .eq(EmotionDiary::getSource, SOURCE_CHAT)
+                .eq(EmotionDiary::getSourceSessionId, sessionId)) > 0;
+    }
+
+    /**
+     * 插入日记并投递 AUTO 分析任务，评估由消费者异步完成。
+     *
+     * @return 新日记主键
+     */
+    private Long insertDiaryWithTask(EmotionDiary diary, Long userId) {
         diaryMapper.insert(diary);
 
         AiAnalysisTask task = new AiAnalysisTask();
@@ -91,6 +116,24 @@ public class EmotionDiaryService {
         taskMapper.insert(task);
 
         return diary.getId();
+    }
+
+    /**
+     * 当前用户自己的全部情绪记录，按日期倒序——情绪日记页"观看自己心情"的数据源。
+     */
+    public List<EmotionDiaryResponseDTO> myDiaries() {
+        Long userId = AuthUtil.requireUserId();
+
+        List<EmotionDiary> records = diaryMapper.selectList(
+                Wrappers.lambdaQuery(EmotionDiary.class)
+                        .eq(EmotionDiary::getUserId, userId)
+                        .orderByDesc(EmotionDiary::getDiaryDate)
+                        .orderByDesc(EmotionDiary::getId));
+
+        Map<Long, User> users = loadUsers(List.of(userId));
+        return records.stream()
+                .map(d -> toResponse(d, users.get(d.getUserId())))
+                .toList();
     }
 
     public IPage<EmotionDiaryResponseDTO> adminPage(EmotionDiaryPageQuery query) {
@@ -165,13 +208,10 @@ public class EmotionDiaryService {
         dto.setSleepQuality(d.getSleepQuality());
         dto.setStressLevel(d.getStressLevel());
         dto.setAiEmotionAnalysis(d.getAiEmotionAnalysis());
+        dto.setSource(d.getSource());
         dto.setAiAnalysisUpdatedAt(d.getAiAnalysisUpdatedAt());
         dto.setCreatedAt(d.getCreatedAt());
         dto.setUpdatedAt(d.getUpdatedAt());
         return dto;
-    }
-
-    private static String blankToNull(String v) {
-        return v == null || v.isBlank() ? null : v;
     }
 }

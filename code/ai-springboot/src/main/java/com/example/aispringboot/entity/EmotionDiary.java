@@ -41,6 +41,12 @@ public class EmotionDiary {
 
     private LocalDateTime aiAnalysisUpdatedAt;
 
+    /** 记录来源：CHAT=AI咨询对话自动记录，MANUAL=手动填写，NULL视为MANUAL */
+    private String source;
+
+    /** CHAT 来源时关联的咨询会话ID */
+    private Long sourceSessionId;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
