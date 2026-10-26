@@ -39,6 +39,8 @@ public class ArticleResponseDTO {
     private String authorName;
     private Integer readCount;
     private Integer status;
+    /** 1=置顶 0=普通 */
+    private Integer isTop;
     private String statusDisplayName;
     private String publishedAt;
     private String createdAt;

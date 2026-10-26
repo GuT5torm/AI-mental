@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -70,6 +71,13 @@ public class KnowledgeController {
     public Result<ArticleResponseDTO> changeStatus(@PathVariable("id") String id,
                                                    @Valid @RequestBody ArticleStatusCommandDTO command) {
         return Result.ok(knowledgeService.changeStatus(id, command));
+    }
+
+    /** 置顶/取消置顶文章 */
+    @PutMapping("/article/{id}/top")
+    public Result<ArticleResponseDTO> changeTop(@PathVariable("id") String id,
+                                                @RequestParam("top") boolean top) {
+        return Result.ok(knowledgeService.changeTop(id, top));
     }
 
     @DeleteMapping("/article/{id}")

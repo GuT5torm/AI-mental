@@ -105,6 +105,8 @@ public class KnowledgeService {
         if (sortColumn != null) {
             page.addOrder(query.isAsc() ? OrderItem.asc(sortColumn) : OrderItem.desc(sortColumn));
         } else {
+            // 默认排序：置顶文章优先，其余按发布时间倒序
+            page.addOrder(OrderItem.desc("is_top"));
             page.addOrder(OrderItem.desc("created_at"));
         }
 
@@ -228,6 +230,21 @@ public class KnowledgeService {
         articleMapper.deleteById(id);
     }
 
+    /**
+     * 置顶/取消置顶文章。置顶文在前台列表中优先展示。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ArticleResponseDTO changeTop(String id, boolean top) {
+        AuthUtil.requireAdmin();
+        KnowledgeArticle article = articleMapper.selectById(id);
+        if (article == null) {
+            throw new BusinessException(ResultCode.ARTICLE_NOT_EXIST.getCode(), "文章不存在");
+        }
+        article.setIsTop(top ? 1 : 0);
+        articleMapper.updateById(article);
+        return toDto(article, loadCategoryNames(), loadAuthorNames(List.of(article)), false);
+    }
+
     private static boolean isAdmin() {
         return AuthUtil.isAdmin();
     }
@@ -275,6 +292,7 @@ public class KnowledgeService {
         dto.setAuthorName(a.getAuthorId() == null ? null : authorNames.get(a.getAuthorId()));
         dto.setReadCount(a.getReadCount());
         dto.setStatus(a.getStatus());
+        dto.setIsTop(a.getIsTop());
         dto.setStatusDisplayName(describeStatus(a.getStatus()));
         dto.setTimeFields(a.getPublishedAt(), a.getCreatedAt(), a.getUpdatedAt());
         return dto;

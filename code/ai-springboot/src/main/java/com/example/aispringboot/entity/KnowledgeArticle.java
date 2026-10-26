@@ -38,6 +38,9 @@ public class KnowledgeArticle {
 
     private Integer status;
 
+    /** 1=置顶 0=普通 */
+    private Integer isTop;
+
     private LocalDateTime publishedAt;
 
     private LocalDateTime createdAt;
