@@ -40,4 +40,23 @@ public interface AiChatClient {
      * 前端 consultations.vue 的 currentEmotion 直接消费这些字段。
      */
     Map<String, Object> analyzeEmotion(List<ChatMessage> recentMessages);
+
+    /**
+     * 带运行时参数的流式生成（用户自配 Key / 端点 / 模型）。
+     *
+     * <p>默认实现忽略 options、直接委托给无参版本：Mock 实现无需感知用户配置，
+     * 真实实现覆写本方法做调用级覆盖，字段为空时必须回落实例级配置。
+     * 原有三个方法保持不变，既有调用方与测试不受影响。
+     */
+    default void streamChat(List<ChatMessage> history, String userMessage,
+                            Consumer<String> chunkConsumer, AiCallOptions options) {
+        streamChat(history, userMessage, chunkConsumer);
+    }
+
+    /**
+     * 带运行时参数的情绪分析，语义同 {@link #analyzeEmotion(List)}。
+     */
+    default Map<String, Object> analyzeEmotion(List<ChatMessage> recentMessages, AiCallOptions options) {
+        return analyzeEmotion(recentMessages);
+    }
 }

@@ -2,10 +2,10 @@ package com.example.aispringboot.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
@@ -26,8 +26,9 @@ import java.util.function.Consumer;
 /**
  * 对接 DeepSeek（OpenAI 兼容 {@code /chat/completions}）的真实大模型实现。
  *
- * <p>当 {@code app.ai.provider=deepseek} 时激活；未设置时仍使用
- * {@link MockAiChatClient}，因此默认配置下所有依赖确定性输出的测试不受影响。
+ * <p>本类始终注册在容器中：只有调用携带可用 Key（用户自配或管理员全局）时
+ * 才由 {@link RoutingAiChatClient} 路由到本类，其余情况走 mock，保证默认配置下
+ * 所有依赖确定性输出的测试不受影响。
  *
  * <p>密钥与端点全部走环境变量，不写入仓库：
  * <ul>
@@ -40,10 +41,12 @@ import java.util.function.Consumer;
  * </ul>
  * 由于协议是 OpenAI 兼容的，把 base-url 与 key 换成 OpenAI / Qwen / Moonshot 等
  * 兼容服务同样可用，业务代码无需改动。
+ *
+ * <p>除环境变量外，每次调用还可以携带 {@link AiCallOptions}（用户自配 Key），
+ * 调用级字段优先、为空回落实例配置；用户没配置时行为与原来完全一致。
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "app.ai.provider", havingValue = "deepseek")
 public class DeepSeekAiChatClient implements AiChatClient {
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -69,6 +72,13 @@ public class DeepSeekAiChatClient implements AiChatClient {
     @Value("${app.ai.timeout-seconds:60}")
     private long timeoutSeconds;
 
+    /** 角色人设提示词文件，随 jar 打包，保证真实模型按"心理陪伴伙伴"口吻回复 */
+    @Value("classpath:prompts/companion-persona.md")
+    private org.springframework.core.io.Resource personaResource;
+
+    /** 启动时加载好的人设全文；读取失败为 null，届时退化为无人设对话，不影响可用性 */
+    private String personaPrompt;
+
     @Resource
     private ObjectMapper objectMapper;
 
@@ -85,22 +95,62 @@ public class DeepSeekAiChatClient implements AiChatClient {
         return model;
     }
 
+    /** 启动时一次性读入人设全文，避免每次对话都做磁盘 IO */
+    @PostConstruct
+    void loadPersonaPrompt() {
+        if (personaResource == null || !personaResource.exists()) {
+            log.warn("未找到人设提示词资源 prompts/companion-persona.md，真实模型将以无人设方式对话");
+            return;
+        }
+        try (InputStream is = personaResource.getInputStream()) {
+            String text = new String(is.readAllBytes(), StandardCharsets.UTF_8).trim();
+            if (text.isBlank()) {
+                log.warn("人设提示词资源为空，真实模型将以无人设方式对话");
+                return;
+            }
+            personaPrompt = text;
+            log.info("人设提示词加载完成，长度 {} 字符", personaPrompt.length());
+        } catch (Exception e) {
+            log.warn("人设提示词读取失败，真实模型将以无人设方式对话", e);
+        }
+    }
+
     @Override
     public void streamChat(List<ChatMessage> history, String userMessage, Consumer<String> chunkConsumer) {
+        doStreamChat(history, userMessage, chunkConsumer, apiKey, baseUrl, model);
+    }
+
+    /** 调用级覆盖：用户自配的 Key / 端点 / 模型优先，字段为空回落实例配置 */
+    @Override
+    public void streamChat(List<ChatMessage> history, String userMessage,
+                           Consumer<String> chunkConsumer, AiCallOptions options) {
+        doStreamChat(history, userMessage, chunkConsumer,
+                AiCallOptions.firstNonBlank(options == null ? null : options.apiKey(), apiKey),
+                AiCallOptions.firstNonBlank(options == null ? null : options.baseUrl(), baseUrl),
+                AiCallOptions.firstNonBlank(options == null ? null : options.model(), model));
+    }
+
+    private void doStreamChat(List<ChatMessage> history, String userMessage,
+                              Consumer<String> chunkConsumer, String effKey, String effBase, String effModel) {
         if (chunkConsumer == null) {
             return;
         }
-        if (apiKey == null || apiKey.isBlank()) {
+        if (effKey == null || effKey.isBlank()) {
             chunkConsumer.accept("尚未配置 AI_API_KEY，无法连接大模型。请在环境变量中设置后重启。");
             return;
         }
         List<Map<String, String>> messages = new ArrayList<>();
+        // 每轮请求都在首位重新注入人设，不依赖模型对历史记忆，防止长对话口吻漂移
+        if (personaPrompt != null && !personaPrompt.isBlank()) {
+            messages.add(message("system", personaPrompt));
+        }
         appendHistory(messages, history);
         if (userMessage != null && !userMessage.isBlank()) {
             messages.add(message("user", userMessage));
         }
         try {
-            HttpResponse<InputStream> resp = postStream(chatCompletions(messages, true));
+            HttpResponse<InputStream> resp = postStream(
+                    chatCompletions(messages, true, effModel), effBase, effKey);
             if (resp.statusCode() != 200) {
                 String errBody = readQuietly(resp.body());
                 log.warn("大模型流式接口返回 {}, body={}", resp.statusCode(), errBody);
@@ -152,8 +202,22 @@ public class DeepSeekAiChatClient implements AiChatClient {
 
     @Override
     public Map<String, Object> analyzeEmotion(List<ChatMessage> recentMessages) {
+        return doAnalyzeEmotion(recentMessages, apiKey, baseUrl, model);
+    }
+
+    /** 调用级覆盖：用户自配的 Key / 端点 / 模型优先，字段为空回落实例配置 */
+    @Override
+    public Map<String, Object> analyzeEmotion(List<ChatMessage> recentMessages, AiCallOptions options) {
+        return doAnalyzeEmotion(recentMessages,
+                AiCallOptions.firstNonBlank(options == null ? null : options.apiKey(), apiKey),
+                AiCallOptions.firstNonBlank(options == null ? null : options.baseUrl(), baseUrl),
+                AiCallOptions.firstNonBlank(options == null ? null : options.model(), model));
+    }
+
+    private Map<String, Object> doAnalyzeEmotion(List<ChatMessage> recentMessages,
+                                                 String effKey, String effBase, String effModel) {
         Map<String, Object> fallback = fallbackAnalysis();
-        if (apiKey == null || apiKey.isBlank()) {
+        if (effKey == null || effKey.isBlank()) {
             log.warn("AI_API_KEY 未配置，情绪分析回退到内置默认方案");
             return fallback;
         }
@@ -161,7 +225,7 @@ public class DeepSeekAiChatClient implements AiChatClient {
         messages.add(message("system", EMOTION_INSTRUCTION));
         appendHistory(messages, recentMessages);
         try {
-            HttpResponse<String> resp = postForJson(chatCompletions(messages, false));
+            HttpResponse<String> resp = postForJson(chatCompletions(messages, false, effModel), effBase, effKey);
             if (resp.statusCode() != 200) {
                 log.warn("情绪分析接口返回 {}", resp.statusCode());
                 return fallback;
@@ -183,28 +247,28 @@ public class DeepSeekAiChatClient implements AiChatClient {
     }
 
     /** 一次性 JSON 调用：整体读取响应体 */
-    private HttpResponse<String> postForJson(String body) throws Exception {
-        return httpClient.send(buildRequest(body), HttpResponse.BodyHandlers.ofString());
+    private HttpResponse<String> postForJson(String body, String effBase, String effKey) throws Exception {
+        return httpClient.send(buildRequest(body, effBase, effKey), HttpResponse.BodyHandlers.ofString());
     }
 
     /** 流式调用：拿到响应头后立即返回，body 以输入流形式逐行消费 */
-    private HttpResponse<InputStream> postStream(String body) throws Exception {
-        return httpClient.send(buildRequest(body), HttpResponse.BodyHandlers.ofInputStream());
+    private HttpResponse<InputStream> postStream(String body, String effBase, String effKey) throws Exception {
+        return httpClient.send(buildRequest(body, effBase, effKey), HttpResponse.BodyHandlers.ofInputStream());
     }
 
-    private HttpRequest buildRequest(String body) {
+    private HttpRequest buildRequest(String body, String effBase, String effKey) {
         return HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/chat/completions"))
+                .uri(URI.create(effBase + "/chat/completions"))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
+                .header("Authorization", "Bearer " + effKey)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
     }
 
-    private String chatCompletions(List<Map<String, String>> messages, boolean stream) throws Exception {
+    private String chatCompletions(List<Map<String, String>> messages, boolean stream, String effModel) throws Exception {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("model", model);
+        payload.put("model", effModel);
         payload.put("messages", messages);
         payload.put("stream", stream);
         payload.put("temperature", temperature);

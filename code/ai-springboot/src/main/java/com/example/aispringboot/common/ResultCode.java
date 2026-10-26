@@ -30,6 +30,10 @@ public enum ResultCode {
     SESSION_NOT_EXIST("6040", "会话不存在"),
     SESSION_FORBIDDEN("6041", "无权访问该会话"),
     DIARY_NOT_EXIST("6042", "日记不存在"),
+    AI_CONFIG_ERROR("6050", "AI配置处理失败"),
+    AI_CONFIG_SECRET_MISSING("6051", "服务端未配置 AI_CONFIG_SECRET，无法保存 API Key"),
+    AI_CONFIG_DECRYPT_FAILED("6052", "API Key 解密失败，服务端密钥可能已变更，请重新保存"),
+    AI_CONFIG_TEST_FAILED("6053", "API Key 校验未通过"),
 
     // token相关错误
     TOKEN_INVALID("A0230", "token无效"),

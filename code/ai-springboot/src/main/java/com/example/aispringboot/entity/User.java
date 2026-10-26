@@ -66,6 +66,9 @@ public class User {
     //状态 0：禁用 1：正常
     private Integer status;
 
+    //真实模型开关 1：允许（全局 Key 对其生效） 0：强制演示模式，由管理员在后台维护
+    private Integer aiRealEnabled;
+
     //创建时间，由数据库默认值维护
     private LocalDateTime createdAt;
 

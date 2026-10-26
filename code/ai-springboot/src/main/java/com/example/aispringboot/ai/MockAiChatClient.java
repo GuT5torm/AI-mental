@@ -1,6 +1,5 @@
 package com.example.aispringboot.ai;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,12 +15,10 @@ import java.util.function.Consumer;
  * 情绪分析这些契约可以先跑通并联调。它不产生任何真实语义，
  * 输出是确定性的（同样的输入永远得到同样的输出），因此测试可以断言内容。
  *
- * <p>接入真实模型时新增一个实现类并标注
- * {@code @ConditionalOnProperty(name = "app.ai.provider", havingValue = "xxx")} 即可，
- * 本类在 provider 不等于 mock 时自动失效。
+ * <p>本类始终注册在容器中：没有任何可用 Key（用户自配/管理员全局均未配置）时
+ * 由 {@link RoutingAiChatClient} 路由到本类作为演示模式。
  */
 @Component
-@ConditionalOnProperty(name = "app.ai.provider", havingValue = "mock", matchIfMissing = true)
 public class MockAiChatClient implements AiChatClient {
 
     public static final String MODEL_NAME = "mock-model";

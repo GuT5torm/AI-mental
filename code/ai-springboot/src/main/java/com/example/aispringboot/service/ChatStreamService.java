@@ -1,6 +1,7 @@
 package com.example.aispringboot.service;
 
 import com.example.aispringboot.DTO.command.StreamCommandDTO;
+import com.example.aispringboot.ai.AiCallOptions;
 import com.example.aispringboot.ai.AiChatClient;
 import com.example.aispringboot.ai.ChatMessage;
 import com.example.aispringboot.common.BusinessException;
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -44,11 +46,28 @@ public class ChatStreamService {
     /** 单次对话的超时上限，超时后由 onTimeout 兜底结束 */
     private static final long TIMEOUT_MILLIS = 10 * 60 * 1000L;
 
+    /** 对话命中关键词时自动记录情绪日志的总开关 */
+    @Value("${app.emotion-capture.enabled:true}")
+    private boolean emotionCaptureEnabled;
+
+    /** mood_score 非空，自动记录先落默认分，AI 评估结果另存分析字段 */
+    @Value("${app.emotion-capture.default-mood-score:3}")
+    private Integer emotionCaptureDefaultMoodScore;
+
     @Resource
     private ConsultationService consultationService;
 
     @Resource
     private AiChatClient aiChatClient;
+
+    @Resource
+    private UserAiConfigService userAiConfigService;
+
+    @Resource
+    private EmotionKeywordService emotionKeywordService;
+
+    @Resource
+    private EmotionDiaryService emotionDiaryService;
 
     @Resource
     private ObjectMapper objectMapper;
@@ -76,14 +95,23 @@ public class ChatStreamService {
             // 先落用户消息：即使后面断流或模型失败，用户说过的内容也不丢
             consultationService.appendUserMessage(session.getId(), command.getUserMessage());
 
+            // 关键词触发的情绪自动记录：命中且本会话未记录时写入并推事件，
+            // 失败只记日志，不影响对话主流程
+            pushEmotionCaptureIfNeeded(emitter, userId, session.getId(), command.getUserMessage());
+
             List<ChatMessage> history = new ArrayList<>(
                     consultationService.loadHistory(session.getId(), 20));
             history.remove(history.size() - 1); // 上一步刚插入的用户消息，不重复进上下文
             List<ChatMessage> context = new ArrayList<>(history);
             context.add(ChatMessage.user(command.getUserMessage()));
 
+            // 运行时参数：用户自配 Key 优先，其次管理员全局 Key，都没有则走演示模式
+            AiCallOptions options = userAiConfigService.resolveOptionsWithFallback(userId);
+
             StringBuilder answer = new StringBuilder();
-            aiChatClient.streamChat(context, command.getUserMessage(), chunk -> {
+            // 按契约 history 只含历史轮次，当前这条用户消息由客户端实现自行追加，
+            // 否则真实模型会收到重复的同一条用户消息
+            aiChatClient.streamChat(history, command.getUserMessage(), chunk -> {
                 answer.append(chunk);
                 try {
                     emitter.send(chunkFrame(chunk));
@@ -92,7 +120,7 @@ public class ChatStreamService {
                     // AsyncRequestNotUsableException。两种情况都终止推流，避免空转占用线程。
                     throw new ClientDisconnectedException(e);
                 }
-            });
+            }, options);
 
             String content = answer.toString();
             if (!content.isBlank()) {
@@ -101,7 +129,7 @@ public class ChatStreamService {
             }
 
             // 情绪分析必须在 done 之前完成：前端一收到 done 就立刻回查情绪
-            consultationService.analyzeAndSave(session.getId(), contextWithAnswer(context, content));
+            consultationService.analyzeAndSave(session.getId(), contextWithAnswer(context, content), options);
 
             emitter.send(SseEmitter.event()
                     .name("done")
@@ -132,6 +160,41 @@ public class ChatStreamService {
             full.add(ChatMessage.assistant(answer));
         }
         return full;
+    }
+
+    /**
+     * 用户消息命中情绪关键词时，自动记一条 CHAT 来源的情绪日志并推送
+     * {@code emotion_captured} 命名事件（在 AI 正文之前发出，前端据此插入提示卡片）。
+     *
+     * <p>同一会话只记录一次（查 emotion_diary.source_session_id 去重）；
+     * 评估由 ai_analysis_task 异步完成，这里不等待结果。
+     * 任何异常都只记日志——自动记录是增强能力，绝不能拖垮对话主流程。
+     */
+    private void pushEmotionCaptureIfNeeded(SseEmitter emitter, Long userId, Long sessionId, String userMessage) {
+        try {
+            if (!emotionCaptureEnabled) {
+                return;
+            }
+            List<String> matched = emotionKeywordService.matchKeywords(userMessage);
+            if (matched.isEmpty() || emotionDiaryService.hasChatCapture(sessionId)) {
+                return;
+            }
+            Long diaryId = emotionDiaryService.createDiaryFromChat(
+                    userId, sessionId, userMessage, matched, emotionCaptureDefaultMoodScore);
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("diaryId", diaryId);
+            data.put("matchedKeywords", matched);
+            data.put("hint", "检测到情绪波动，已为你记录，AI 评估稍后完成");
+            Map<String, Object> frame = new LinkedHashMap<>();
+            frame.put("code", "200");
+            frame.put("data", data);
+
+            emitter.send(SseEmitter.event().name("emotion_captured").data(write(frame)));
+            log.info("情绪自动记录完成 diaryId={} sessionId={} keywords={}", diaryId, sessionId, matched);
+        } catch (Exception e) {
+            log.warn("情绪自动记录失败（不影响对话），sessionId={}", sessionId, e);
+        }
     }
 
     private void sendQuietly(SseEmitter emitter, String frame) {

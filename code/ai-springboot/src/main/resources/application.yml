@@ -42,10 +42,19 @@ app:
     max-tokens: ${AI_MAX_TOKENS:2048}
     # 只约束响应头到达前的等待，SSE 推送期间不生效
     timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
+    # 用户自配 API Key 的落库加密主密钥（AES-GCM 派生）。未配置时保存接口明确报错；
+    # 变更后已存密文无法解密，用户需重新保存
+    config-secret: ${AI_CONFIG_SECRET:}
   upload:
     dir: ${UPLOAD_DIR:./uploads}
   file:
     url-prefix: /files
+  emotion-capture:
+    # 对话命中情绪关键词时自动记录情绪日志并投递 AI 评估的总开关；
+    # 触发词在 emotion_keyword 表中维护（增删/停用即时生效）
+    enabled: ${EMOTION_CAPTURE_ENABLED:true}
+    # mood_score 非空，自动记录先落默认分（1-10，中等），AI 评估结果另存分析字段
+    default-mood-score: ${EMOTION_CAPTURE_DEFAULT_MOOD_SCORE:3}
 
 jwt:
   # HS256 要求密钥不少于 256 bit（base64 编码后填入）。未配置 JWT_SECRET 时，

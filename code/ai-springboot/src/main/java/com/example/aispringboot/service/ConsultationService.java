@@ -11,6 +11,7 @@ import com.example.aispringboot.DTO.response.MessageResponseDTO;
 import com.example.aispringboot.DTO.response.SessionMessageStatDTO;
 import com.example.aispringboot.DTO.response.SessionResponseDTO;
 import com.example.aispringboot.DTO.response.SessionStartResponseDTO;
+import com.example.aispringboot.ai.AiCallOptions;
 import com.example.aispringboot.ai.AiChatClient;
 import com.example.aispringboot.ai.ChatMessage;
 import com.example.aispringboot.common.BusinessException;
@@ -61,6 +62,9 @@ public class ConsultationService {
 
     @Resource
     private AiChatClient aiChatClient;
+
+    @Resource
+    private UserAiConfigService userAiConfigService;
 
     @Resource
     private ObjectMapper objectMapper;
@@ -155,7 +159,9 @@ public class ConsultationService {
         if (history.isEmpty()) {
             return defaultEmotion();
         }
-        Map<String, Object> emotion = aiChatClient.analyzeEmotion(history);
+        // 用户自配 Key 优先，其次管理员全局 Key；都没有时走服务端默认实现
+        Map<String, Object> emotion = aiChatClient.analyzeEmotion(history,
+                userAiConfigService.resolveOptionsWithFallback(userId));
         saveEmotion(session.getId(), emotion);
         return emotion;
     }
@@ -164,7 +170,14 @@ public class ConsultationService {
      * 分析当前会话并回写。供流式对话在推送 done 之前调用。
      */
     public Map<String, Object> analyzeAndSave(Long sessionId, List<ChatMessage> recent) {
-        Map<String, Object> emotion = aiChatClient.analyzeEmotion(recent);
+        return analyzeAndSave(sessionId, recent, null);
+    }
+
+    /**
+     * 带用户自配参数的分析版本：options 为 null 时行为与单参版本一致。
+     */
+    public Map<String, Object> analyzeAndSave(Long sessionId, List<ChatMessage> recent, AiCallOptions options) {
+        Map<String, Object> emotion = aiChatClient.analyzeEmotion(recent, options);
         saveEmotion(sessionId, emotion);
         return emotion;
     }
