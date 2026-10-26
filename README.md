@@ -29,19 +29,21 @@
 ### 用户端
 
 - **账号体系**：注册、登录、退出登录，密码使用 BCrypt 加密存储；登录失败按账号锁定（15 分钟内 5 次失败锁 15 分钟），注册按 IP 限流防批量刷号
-- **AI 咨询**：创建咨询会话、查看历史会话、删除会话
-- **流式对话**：基于 SSE（Server-Sent Events）逐字返回 AI 回复
+- **AI 咨询**：创建咨询会话、查看历史会话、删除会话；对话中命中情绪关键词时自动记录心情并推送 AI 评估提示卡
+- **流式对话**：基于 SSE（Server-Sent Events）逐字返回 AI 回复；未配置 Key 或管理员关闭了本账号的真实模型时为演示模式（预设回复），悬停提示条上的问号图标可查看说明
 - **会话情绪分析**：查看单次会话的情绪标签、关键词与建议
-- **情绪日记**：记录每日心情、主导情绪、触发事件、睡眠与压力水平
-- **异步情绪分析**：日记提交后由后台任务队列异步生成结构化分析结果
-- **心理知识库**：分类浏览、文章列表、文章详情阅读
+- **我的心情**：只读查看个人情绪记录，支持统计概览与心情走势图；记录由 AI 咨询对话自动生成，无需手动录入
+- **异步情绪分析**：日记生成后由后台任务队列异步补充结构化分析结果
+- **心灵课堂**：分类浏览心理文章、置顶文章展示、文章详情阅读
 
 ### 管理后台
 
 - **数据看板**：用户总数、活跃用户、日记数、会话数、平均情绪评分、情绪趋势、咨询趋势、用户活跃度
-- **知识文章管理**：文章增删改查、封面与图片上传、发布/下线、分类树管理
+- **文章管理**：文章增删改查、封面与图片上传、发布/下线、置顶、分类树管理
 - **咨询记录**：查看全部用户的会话列表与消息明细
 - **情绪日志**：查看并删除用户情绪日记
+- **用户管理**：管理员可直接新增用户（支持自定义初始密码）、编辑资料、启用/禁用、重置密码，并可按用户开关真实大模型（关闭后强制演示模式）
+- **AI 配置**：管理员维护全局大模型 API Key（AES-GCM 加密存储，界面只回显掩码），支持自定义 OpenAI 兼容端点与模型名、一键连通性测试；保存后立即对全部用户生效，无需重启
 
 ## 技术栈
 
@@ -90,7 +92,7 @@ Spring Boot 3
 - **认证**：登录后签发 JWT，前端在 `Authorization` 头中携带；拦截器解析后将 `userId`、`userType` 写入线程上下文，请求结束后清理。
 - **权限**：`user_type = 1` 为普通用户，`user_type = 2` 为管理员；后台接口统一校验管理员身份。
 - **异步任务**：日记提交时写入 `ai_analysis_task` 任务，由调度线程异步处理并回填分析结果，避免阻塞提交请求。
-- **AI 接缝**：`AiChatClient` 定义了流式对话与情绪分析契约。默认 `app.ai.provider=mock` 使用确定性输出跑通链路；设 `app.ai.provider=deepseek` 并配置 `AI_API_KEY` 后，会切换到 `DeepSeekAiChatClient`（OpenAI 兼容 `/chat/completions` 协议），业务代码无需改动。
+- **AI 接缝**：`AiChatClient` 定义流式对话与情绪分析契约，`RoutingAiChatClient` 作为唯一路由入口——调用携带可用 Key（用户自配优先，其次管理员全局 Key）且该用户的真实模型开关开启时自动切换到 `DeepSeekAiChatClient`（OpenAI 兼容 `/chat/completions` 协议），否则按 `app.ai.provider` 走默认实现（mock 演示模式）。真实模型对话每轮请求都在首位重新注入「心理陪伴伙伴」人设提示词（`resources/prompts/companion-persona.md`），避免长对话口吻漂移。因此管理员在后台保存全局 Key 后立即生效，无需修改环境变量或重启服务；管理员也可在「用户管理」中关闭单个账号的真实模型权限，使其始终处于演示模式。
 
 ## 目录结构
 
@@ -189,6 +191,7 @@ Windows 下若 `psql` 未加入 PATH，可使用完整路径，例如：
 | `AI_TEMPERATURE` | `0.8` | 生成温度 |
 | `AI_MAX_TOKENS` | `2048` | 单次回复最大 token 数 |
 | `AI_TIMEOUT_SECONDS` | `60` | 请求超时（仅约束响应头到达前的等待） |
+| `AI_CONFIG_SECRET` | 空 | API Key 落库加密主密钥（AES-GCM，SHA-256 派生 256 位 Key），管理员全局 Key 与用户级自配 Key 共用。未配置时保存 Key 会明确报错，不影响其他功能 |
 
 ### 3. 启动后端
 
@@ -257,6 +260,8 @@ npm run preview    # 本地预览构建产物
 | 情绪日记 | `/api/emotion-diary` | `POST`（提交）、`GET /admin/page`、`DELETE /admin/{id}` |
 | 知识库 | `/api/knowledge` | `GET /category/tree`、`GET /article/page`、`GET /article/{id}`、`POST /article`、`PUT /article/{id}`、`PUT /article/{id}/status`、`DELETE /article/{id}` |
 | 数据分析 | `/api/data-analytics` | `GET /overview` |
+| AI 自配 Key | `/api/ai-config` | `GET`（掩码视图）、`GET /status`（演示模式状态，含用户真实模型开关）、`PUT`（保存，加密落库）、`DELETE`（恢复默认）、`POST /test`（连通性校验） |
+| AI 全局配置 | `/api/ai/admin-config` | `GET`（掩码视图）、`PUT`（保存并即时生效）、`DELETE`（清空回演示模式）、`POST /test`（连通性校验），全部仅限管理员 |
 | 文件 | `/api/file` | `POST /upload` |
 
 接口统一返回结构：
@@ -271,12 +276,15 @@ npm run preview    # 本地预览构建产物
 
 ## 数据库结构
 
-共 9 张表：
+共 12 张表：
 
 | 表名 | 说明 |
 | --- | --- |
 | `user` | 用户与管理员账号 |
-| `emotion_diary` | 情绪日记 |
+| `user_ai_config` | 用户自配大模型 API Key（AES-GCM 密文，一人一条；接口保留向后兼容，优先级高于全局配置） |
+| `ai_system_config` | 管理员维护的全局大模型配置（AES-GCM 密文，单行表，保存后即时生效） |
+| `emotion_keyword` | 情绪触发关键词（AI 对话命中后自动记录心情） |
+| `emotion_diary` | 情绪日记（由 AI 咨询对话自动生成） |
 | `ai_analysis_task` | AI 分析任务队列 |
 | `consultation_session` | 咨询会话 |
 | `consultation_message` | 咨询消息 |
@@ -287,12 +295,14 @@ npm run preview    # 本地预览构建产物
 
 完整 DDL 见 [code/ai-springboot/src/main/resources/db/schema.sql](code/ai-springboot/src/main/resources/db/schema.sql)，演示数据见 [db/seed.sql](code/ai-springboot/src/main/resources/db/seed.sql)。
 
+> 已有环境升级：若此前导入过旧版 `schema.sql`，新建库直接重新导入即可；不想重建的存量库可依次执行 [db/migration](code/ai-springboot/src/main/resources/db/migration) 下的迁移脚本（均为幂等语句，含回退说明），对既有数据无影响。
+
 ## 权限模型
 
 | 角色 | `user_type` | 可访问范围 |
 | --- | --- | --- |
 | 普通用户 | 1 | 前台首页、AI 咨询、情绪日记、知识库 |
-| 管理员 | 2 | 后台数据看板、知识文章管理、咨询记录、情绪日志 |
+| 管理员 | 2 | 后台数据看板、知识文章管理、咨询记录、情绪日志、用户管理、AI 配置 |
 
 - 登录接口与前台公开接口通过 `@Anonymous` 注解放行，其余接口默认要求 JWT。
 - 前端路由守卫基于本地存储中的 `userInfo.userType` 做页面分流，后端接口仍会独立校验权限。
@@ -304,10 +314,11 @@ npm run preview    # 本地预览构建产物
 - **防账号枚举**：登录时"账号不存在"与"密码错误"返回完全一致的错误码与文案，且都计入失败锁定次数。
 - **防暴力破解**：同一账号 15 分钟内连续失败 5 次后锁定，成功登录自动解锁（进程内限流器，多实例部署可平滑换 Redis 实现）。
 - **文件上传加固**：业务目录限定 `[a-z0-9_-]` 字符集、扩展名白名单（20 种常规类型）、落盘文件 UUID 命名，分别封堵目录穿越、存储型 XSS 与文件枚举下载。
+- **API Key 加密存储**：用户自配与管理员全局的大模型 Key 均使用 AES-GCM（随机 IV）加密落库，主密钥仅存在于服务端环境变量 `AI_CONFIG_SECRET`，任何接口只返回掩码；自配端点禁止指向本机与内网地址（防 SSRF），保存与校验接口按用户限流。
 
 ## 测试
 
-后端包含 8 个测试类、55 个用例，覆盖认证、咨询会话、情绪日记、知识库、数据分析、AI 任务重试与数据库冒烟等链路：
+后端包含 16 个测试类、97 个用例，覆盖认证、用户管理、咨询会话、AI Key 配置（加解密、用户级与全局配置流程、主密钥缺失、调用级覆盖、人设提示词注入、端点连通性、按用户开关真实模型）、情绪日记与自动记录、知识库、数据分析、AI 任务重试与数据库冒烟等链路：
 
 ```bash
 cd code/ai-springboot
@@ -318,7 +329,7 @@ cd code/ai-springboot
 
 ## 已知限制
 
-- AI 回复默认使用 **Mock 实现**（确定性文案，用于跑通流式对话与情绪分析契约）；已提供 `DeepSeekAiChatClient` 真实对接实现，设置 `AI_PROVIDER=deepseek` 并配置 `AI_API_KEY` 即可切换。
+- AI 回复默认使用 **Mock 演示模式**（确定性文案，用于跑通流式对话与情绪分析契约）；管理员在后台「AI 配置」保存全局 API Key 后，真实模型（OpenAI 兼容协议）立即对已开启真实模型开关的用户生效，无需重启；管理员可在「用户管理」中按用户关闭真实模型（关闭后始终演示模式）。用户级自配 Key 接口保留向后兼容且优先级更高；也仍支持 `AI_PROVIDER=deepseek` + `AI_API_KEY` 的环境变量方式。
 - 文件存储使用本地磁盘，尚未接入对象存储。
 - 未提供容器化部署与 CI 配置。
 
