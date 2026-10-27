@@ -1,4 +1,4 @@
-# 心理健康 AI 助手
+﻿# 心理健康 AI 助手
 
 > 一个面向情绪陪伴与心理疏导场景的全栈 Web 应用：AI 流式对话、情绪日记、心理知识库与管理后台。
 
@@ -14,15 +14,15 @@
 
 | 首页 | AI 咨询 |
 | --- | --- |
-| ![首页](docs/screenshots/01-home.png) | ![AI 咨询](docs/screenshots/04-consultations.png) |
+| ![首页](docs/screenshots/01-home-20261027.png) | ![AI 咨询](docs/screenshots/04-consultations-20261027.png) |
 
 | 情绪日记 | 数据看板 |
 | --- | --- |
-| ![情绪日记](docs/screenshots/05-emotion-diary.png) | ![数据看板](docs/screenshots/03-dashboard.png) |
+| ![情绪日记](docs/screenshots/05-emotion-diary-20261027.png) | ![数据看板](docs/screenshots/03-dashboard-20261027.png) |
 
 | 知识库 | 登录页 |
 | --- | --- |
-| ![知识库](docs/screenshots/06-knowledge.png) | ![登录页](docs/screenshots/02-login.png) |
+| ![知识库](docs/screenshots/06-knowledge-20261027.png) | ![登录页](docs/screenshots/02-login-20261027.png) |
 
 | 用户管理 | AI 配置 |
 | --- | --- |
