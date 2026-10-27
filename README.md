@@ -24,6 +24,10 @@
 | --- | --- |
 | ![知识库](docs/screenshots/06-knowledge.png) | ![登录页](docs/screenshots/02-login.png) |
 
+| 用户管理 | AI 配置 |
+| --- | --- |
+| ![用户管理](docs/screenshots/07-users.png) | ![AI 配置](docs/screenshots/08-ai-config.png) |
+
 ## 功能特性
 
 ### 用户端
@@ -268,8 +272,8 @@ npm run preview    # 本地预览构建产物
 
 ```json
 {
-  "code": "0",
-  "msg": "success",
+  "code": "200",
+  "msg": "操作成功",
   "data": {}
 }
 ```
