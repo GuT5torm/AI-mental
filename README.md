@@ -103,9 +103,13 @@ Spring Boot 3
 ```text
 .
 ├── README.md
+├── deploy                           # 生产部署编排
+│   ├── docker-compose.yml           # postgres + backend + frontend(nginx)
+│   └── .env.example                 # 环境变量模板（复制为 .env 使用）
 └── code
     ├── ai-springboot                 # 后端服务
     │   ├── pom.xml
+    │   ├── Dockerfile
     │   └── src
     │       ├── main
     │       │   ├── java/com/example/aispringboot
@@ -124,6 +128,8 @@ Spring Boot 3
     └── ai-vue                        # 前端应用
         ├── package.json
         ├── vite.config.js
+        ├── Dockerfile                # node 构建 + nginx 运行
+        ├── nginx/                    # nginx 站点配置（HTTP / HTTPS）
         └── src
             ├── api/                  # 接口封装
             ├── components/           # 布局、导航、编辑器等公共组件
@@ -142,6 +148,8 @@ Spring Boot 3
 - Maven 3.9+（仓库自带 `mvnw` / `mvnw.cmd`）
 - Node.js 20+ 与 npm
 - PostgreSQL 16
+
+> 生产部署不需要以上环境，仅需 Docker 与 Docker Compose，见下方[「生产部署」](#生产部署)。
 
 ### 1. 初始化数据库
 
@@ -240,6 +248,57 @@ npm run build      # 产物输出至 dist/
 npm run preview    # 本地预览构建产物
 ```
 
+## 生产部署
+
+项目提供容器化生产编排：`deploy/docker-compose.yml` 一条命令拉起 PostgreSQL + 后端 + 前端（nginx 静态托管与反向代理，SSE 流式已做免缓冲透传）。
+
+### 前置条件
+
+- 服务器安装 Docker 与 Docker Compose
+- 启用 HTTPS 时：一个解析到服务器的域名与 TLS 证书
+
+### 启动步骤
+
+```bash
+# 1. 准备环境变量（复制模板并填写必填项）
+cp deploy/.env.example deploy/.env
+
+# 2. 一键构建并启动
+docker compose -f deploy/docker-compose.yml up -d --build
+
+# 3. 查看状态（backend 应为 healthy）
+docker compose -f deploy/docker-compose.yml ps
+```
+
+- 首次启动时 `pgdata` 卷为空，会自动按 `schema.sql → seed.sql` 初始化数据库；此后重启不重复导入
+- 浏览器访问 `http://服务器IP` 即可使用；seed 中的演示账号（admin/test/ces，密码均为 123456）上线后请立即修改或删除
+- 后端容器不对外映射端口，仅经前端 nginx 反代访问；健康检查走 `/actuator/health`
+
+### 必填环境变量（deploy/.env）
+
+| 变量 | 生成方式 | 说明 |
+| --- | --- | --- |
+| `POSTGRES_PASSWORD` | 自行设定强密码 | 数据库密码 |
+| `JWT_SECRET` | `openssl rand -base64 48` | JWT 签名密钥，变更后已登录用户需重新登录 |
+| `AI_CONFIG_SECRET` | `openssl rand -base64 32` | API Key 加密主密钥，变更后已保存的 Key 需重新配置 |
+
+### 启用 HTTPS
+
+1. 申请证书并放入 `deploy/certs/`（`fullchain.pem`、`privkey.pem`；Let's Encrypt 示例见 `.env.example` 注释）
+2. 取消 `deploy/docker-compose.yml` 中 frontend 服务的 `443` 端口映射、`https.conf` 与 `certs` 目录挂载注释
+3. 重建：`docker compose -f deploy/docker-compose.yml up -d --build frontend`，同时将域名解析指向服务器
+
+### 真实大模型接入
+
+`AI_PROVIDER` 默认 `mock`（演示模式）。上线后由管理员在后台「AI 配置」保存全局 API Key 即时生效（无需重启）；也可在 `deploy/.env` 中配置 `AI_PROVIDER` + `AI_API_KEY` 等环境变量方式。
+
+### 日常运维
+
+- **存量库升级**：容器初始化仅针对空库；已有数据的库请手工执行 `code/ai-springboot/src/main/resources/db/migration` 下的迁移脚本（均为幂等语句）
+- **上传文件迁移**：seed/历史数据引用的图片存放在原环境的 `uploads` 目录，迁移部署时需将旧环境的上传目录内容拷入 `uploads` 具名卷（`docker cp` 或 `docker volume` 挂载过渡目录），否则文章封面等引用会 404
+- **数据备份**：`docker compose -f deploy/docker-compose.yml exec postgres pg_dump -U postgres mental_health_assistant > backup_$(date +%F).sql`
+- **跨域**：默认同源反代部署不涉及 CORS；如前后端分离域名部署，在 `.env` 中配置 `CORS_ALLOWED_ORIGINS` 并通过 `build.args` 注入 `VITE_FILE_BASE_URL`
+
 ## 配置说明
 
 | 配置项 | 位置 | 说明 |
@@ -251,9 +310,9 @@ npm run preview    # 本地预览构建产物
 | 上传目录 | `application.yml` → `app.upload.dir` | 默认 `./uploads` |
 | 文件访问前缀 | `application.yml` → `app.file.url-prefix` | 默认 `/files` |
 | 前端代理目标 | `vite.config.js` → `server.proxy` | 默认 `http://localhost:1236` |
-| 文件访问基址 | `src/config/index.js` → `fileBaseUrl` | 需与后端地址保持一致 |
+| 文件访问基址 | `src/config/index.js` → `fileBaseUrl` | 读 `VITE_FILE_BASE_URL`，本地开发经 `.env.development` 指向后端地址，生产默认同源相对路径 |
 
-部署到其他环境时，同步修改 `vite.config.js` 的代理目标与 `src/config/index.js` 的文件基址即可。
+本地开发时 `fileBaseUrl` 由 `.env.development` 提供（默认 `http://localhost:1236`，与 vite 代理目标一致）；生产构建默认同源相对路径经 nginx 反代，分离域名部署时通过 Docker 构建参数注入。
 
 ## 接口概览
 
@@ -334,15 +393,15 @@ cd code/ai-springboot
 ## 已知限制
 
 - AI 回复默认使用 **Mock 演示模式**（确定性文案，用于跑通流式对话与情绪分析契约）；管理员在后台「AI 配置」保存全局 API Key 后，真实模型（OpenAI 兼容协议）立即对已开启真实模型开关的用户生效，无需重启；管理员可在「用户管理」中按用户关闭真实模型（关闭后始终演示模式）。用户级自配 Key 接口保留向后兼容且优先级更高；也仍支持 `AI_PROVIDER=deepseek` + `AI_API_KEY` 的环境变量方式。
-- 文件存储使用本地磁盘，尚未接入对象存储。
-- 未提供容器化部署与 CI 配置。
+- 文件存储使用本地磁盘（容器部署时为 `uploads` 具名卷），尚未接入对象存储。
+- CI 仅覆盖后端单元测试，前端暂无独立构建检查；部署流水线（CD）尚未接入，当前由 `deploy/` 编排在目标服务器手动拉起。
 
 ## 后续可扩展方向
 
 - 接入真实大模型服务（OpenAI / DeepSeek / 通义千问等），保留现有流式契约
 - 文件存储迁移至对象存储（OSS / MinIO）
 - 增加刷新令牌、账号锁定与操作审计
-- 使用 Docker Compose 编排前后端与数据库
+- 接入部署流水线（CD），实现推送即自动发布
 
 ## 说明
 

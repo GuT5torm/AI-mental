@@ -1,0 +1,93 @@
+# 生产环境编排：postgres + backend + frontend(nginx)
+# 使用：
+#   1. cp deploy/.env.example deploy/.env 并填写必填项
+#   2. docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+# 首次启动：pgdata 卷为空时自动按 schema.sql → seed.sql 初始化；
+# 存量库升级请手工执行 code/ai-springboot/src/main/resources/db/migration 下的脚本。
+services:
+  postgres:
+    image: postgres:16
+    container_name: mental-health-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mental_health_assistant
+      POSTGRES_USER: ${POSTGRES_USER:?请在 deploy/.env 中设置 POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 deploy/.env 中设置 POSTGRES_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../code/ai-springboot/src/main/resources/db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d mental_health_assistant"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: ../code/ai-springboot
+    container_name: mental-health-prod-backend
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/mental_health_assistant
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # 必填：HS256 密钥（base64，≥256bit）。变更后已签发 token 全部失效
+      JWT_SECRET: ${JWT_SECRET:?请在 deploy/.env 中设置 JWT_SECRET}
+      # 必填：用户自配 API Key 的 AES-GCM 加密主密钥。变更后已存密文无法解密
+      AI_CONFIG_SECRET: ${AI_CONFIG_SECRET:?请在 deploy/.env 中设置 AI_CONFIG_SECRET}
+      # mock=演示模式；管理员后台保存全局 Key 后无需重启即可对开启真实模型的用户生效
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com}
+      AI_MODEL: ${AI_MODEL:-deepseek-chat}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0.8}
+      AI_MAX_TOKENS: ${AI_MAX_TOKENS:-2048}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-60}
+      UPLOAD_DIR: /app/uploads
+      # 仅前后端分离域名部署时需要；同源反代部署可留空
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # JVM 内存按服务器规格调整，如：JAVA_OPTS: -XX:MaxRAMPercentage=75.0
+      JAVA_OPTS: ${JAVA_OPTS:-}
+      TZ: Asia/Shanghai
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ../code/ai-vue
+      # 分离域名部署时取消注释并填前端可访问的文件基址
+      # args:
+      #   VITE_FILE_BASE_URL: https://files.example.com
+    container_name: mental-health-prod-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    # ---- 启用 HTTPS（三步，见 README「生产部署」）----
+    # 1. 证书放入 deploy/certs/（fullchain.pem、privkey.pem）
+    # 2. 取消下面端口映射与卷挂载注释
+    # 3. 重建：docker compose -f deploy/docker-compose.yml up -d --build frontend
+    # ports:
+    #   - "443:443"
+    # volumes:
+    #   - ../code/ai-vue/nginx/https.conf:/etc/nginx/conf.d/https.conf:ro
+    #   - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - internal
+
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  internal:

@@ -15,6 +15,11 @@ uploads/
 # 本地数据库快照（变更前备份，仅保留在本地）
 backups/
 
+# 生产部署敏感配置与证书（仅保留在本地，禁止入库）
+deploy/.env
+deploy/certs/*
+!deploy/certs/.gitkeep
+
 # 本地开发记录与内部文档（保留在本地，不纳入版本库）
 .workbuddy/
 code/.workbuddy/

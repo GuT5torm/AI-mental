@@ -1,0 +1,1 @@
+# HTTPS 证书存放目录（fullchain.pem / privkey.pem），已加入 .gitignore 不入库

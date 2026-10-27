@@ -30,8 +30,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 拦截全部请求，放行规则由 @Anonymous 注解表达
-        registry.addInterceptor(tokenInterceptor).addPathPatterns("/**");
+        // 拦截全部请求，放行规则由 @Anonymous 注解表达；
+        // actuator 健康端点放行，供容器 HEALTHCHECK 与运维探活使用
+        registry.addInterceptor(tokenInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/actuator/**");
     }
 
     @Override
