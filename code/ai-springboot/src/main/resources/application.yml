@@ -51,9 +51,10 @@ app:
     url-prefix: /files
   emotion-capture:
     # 对话命中情绪关键词时自动记录情绪日志并投递 AI 评估的总开关；
-    # 触发词在 emotion_keyword 表中维护（增删/停用即时生效）
+    # 触发词在 emotion_keyword 表中维护（增删/停用即时生效，词带 1-3 级严重度）
     enabled: ${EMOTION_CAPTURE_ENABLED:true}
-    # mood_score 非空，自动记录先落默认分（1-10，中等），AI 评估结果另存分析字段
+    # mood_score 非空。初始分按命中词等级推导（轻→4、中→3、重→2，同级≥3词再降1分），
+    # 未命中任何词时用本默认分兜底；AI 评估完成后用 emotionScore 换算回写覆盖
     default-mood-score: ${EMOTION_CAPTURE_DEFAULT_MOOD_SCORE:3}
 
 jwt:

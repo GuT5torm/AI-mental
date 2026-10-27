@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.example.aispringboot.common.JwtUtil;
 import com.example.aispringboot.entity.AiAnalysisTask;
 import com.example.aispringboot.entity.EmotionDiary;
+import com.example.aispringboot.entity.EmotionKeyword;
 import com.example.aispringboot.mapper.AiAnalysisTaskMapper;
 import com.example.aispringboot.mapper.EmotionDiaryMapper;
 import com.example.aispringboot.service.EmotionDiaryService;
@@ -30,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * AI 咨询关键词触发情绪自动记录的校验。
  *
- * <p>seed 里预置了 12 个启用关键词（焦虑、压力大、失眠等），用例直接依赖；
+ * <p>seed 里预置了 58 个启用关键词（带 1-3 级严重度），用例直接依赖；
  * 全部标 @Transactional 回滚，不产生脏数据。定时器关闭原因同 EmotionDiaryFlowTest。
  */
 @SpringBootTest
@@ -55,7 +56,8 @@ public class EmotionCaptureFlowTest {
     @Transactional(rollbackFor = Exception.class)
     public void 关键词命中_返回全部命中词() {
         List<String> matched = keywordService.matchKeywords("我最近压力大，晚上失眠，白天很焦虑");
-        assertEquals(List.of("焦虑", "压力大", "失眠"), matched, "按词表 id 顺序返回");
+        // "压力大"与短词"压力"是两个独立词条，都会命中，按词表 id 顺序返回
+        assertEquals(List.of("焦虑", "压力大", "失眠", "压力"), matched);
     }
 
     @Test
@@ -141,5 +143,41 @@ public class EmotionCaptureFlowTest {
         mockMvc.perform(get("/api/emotion-diary/my").header("Token", otherToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(8));
+    }
+
+    @Test
+    @Transactional(rollbackFor = Exception.class)
+    public void 等级评分_最重词定档() {
+        List<EmotionKeyword> lightOnly = keywordService.match("有点不开心，好累");
+        assertEquals(4, keywordService.deriveMoodScore(lightOnly, 3), "只命中轻度词定档 4 分");
+
+        List<EmotionKeyword> withSevere = keywordService.match("有点不开心，但我今天真的崩溃了");
+        assertEquals(2, keywordService.deriveMoodScore(withSevere, 3), "同时命中重度词时以最重档 2 分为准");
+    }
+
+    @Test
+    @Transactional(rollbackFor = Exception.class)
+    public void 等级评分_同级多词降档且不低于1分() {
+        List<EmotionKeyword> threeLight = keywordService.match("不开心，心烦，还有点好烦");
+        assertEquals(3, keywordService.deriveMoodScore(threeLight, 3), "3 个轻度词降 1 档到 3 分");
+
+        List<EmotionKeyword> fourSevere = keywordService.match("崩溃了，绝望，撑不住，喘不过气");
+        assertEquals(1, keywordService.deriveMoodScore(fourSevere, 3), "4 个重度词 2-1=1 分");
+    }
+
+    @Test
+    @Transactional(rollbackFor = Exception.class)
+    public void 自动记录_按等级推导初始分() {
+        List<EmotionKeyword> matched = keywordService.match("我最近真的很崩溃，撑不住了");
+        assertFalse(matched.isEmpty(), "崩溃与撑不住都在词表中");
+
+        int derived = keywordService.deriveMoodScore(matched, 3);
+        Long diaryId = diaryService.createDiaryFromChat(2L, 999043L,
+                "我最近真的很崩溃，撑不住了",
+                matched.stream().map(EmotionKeyword::getKeyword).toList(), derived);
+
+        EmotionDiary diary = diaryMapper.selectById(diaryId);
+        assertEquals(2, diary.getMoodScore(), "两个重度词初始分应为 2");
+        assertTrue(diary.getEmotionTriggers().contains("崩溃"));
     }
 }

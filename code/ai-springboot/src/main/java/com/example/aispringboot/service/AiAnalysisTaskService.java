@@ -132,9 +132,13 @@ public class AiAnalysisTaskService {
                 userAiConfigService.resolveOptionsWithFallback(diary.getUserId()));
         String json = toJson(emotion);
 
+        // 评估完成用 emotionScore(0-100) 换算回写心情分（1-10），覆盖关键词等级推导的初始分
+        Integer aiMoodScore = toMoodScore(emotion.get("emotionScore"));
+
         diaryMapper.update(null, Wrappers.lambdaUpdate(EmotionDiary.class)
                 .set(EmotionDiary::getAiEmotionAnalysis, json)
                 .set(EmotionDiary::getAiAnalysisUpdatedAt, LocalDateTime.now())
+                .set(aiMoodScore != null, EmotionDiary::getMoodScore, aiMoodScore)
                 .eq(EmotionDiary::getId, diary.getId()));
 
         taskMapper.update(null, Wrappers.lambdaUpdate(AiAnalysisTask.class)
@@ -177,6 +181,18 @@ public class AiAnalysisTaskService {
         }
     }
 
+    /**
+     * 模型返回的 emotionScore(0-100，越高越好) 换算成心情分(1-10，越低越差)：
+     * 十等分后四舍五入并夹取到 1-10。字段缺失或非法时返回 null，表示不回写、
+     * 保留关键词等级推导的初始分。
+     */
+    public static Integer toMoodScore(Object emotionScore) {
+        if (!(emotionScore instanceof Number number)) {
+            return null;
+        }
+        int mood = Math.round(number.floatValue() / 10f);
+        return Math.max(1, Math.min(10, mood));
+    }
     /**
      * 把一条日记拼成模型输入。
      *

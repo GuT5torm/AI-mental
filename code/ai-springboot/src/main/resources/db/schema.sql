@@ -496,6 +496,7 @@ CREATE TABLE public.emotion_keyword (
     id bigint NOT NULL,
     keyword character varying(50) NOT NULL,
     enabled smallint NOT NULL DEFAULT 1,
+    level smallint NOT NULL DEFAULT 1,
     created_at timestamp(0) without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp(0) without time zone DEFAULT CURRENT_TIMESTAMP
 );
@@ -506,6 +507,7 @@ CREATE TABLE public.emotion_keyword (
 --
 
 COMMENT ON TABLE public.emotion_keyword IS '情绪触发关键词表';
+COMMENT ON COLUMN public.emotion_keyword.level IS '词的严重度等级：1=轻度 2=中度 3=重度，用于自动记录时推导初始心情分';
 
 
 --

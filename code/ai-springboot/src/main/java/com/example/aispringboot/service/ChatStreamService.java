@@ -7,6 +7,7 @@ import com.example.aispringboot.ai.ChatMessage;
 import com.example.aispringboot.common.BusinessException;
 import com.example.aispringboot.entity.ConsultationMessage;
 import com.example.aispringboot.entity.ConsultationSession;
+import com.example.aispringboot.entity.EmotionKeyword;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -175,23 +176,27 @@ public class ChatStreamService {
             if (!emotionCaptureEnabled) {
                 return;
             }
-            List<String> matched = emotionKeywordService.matchKeywords(userMessage);
+            List<EmotionKeyword> matched = emotionKeywordService.match(userMessage);
             if (matched.isEmpty() || emotionDiaryService.hasChatCapture(sessionId)) {
                 return;
             }
+            List<String> matchedKeywords = matched.stream().map(EmotionKeyword::getKeyword).toList();
+            int moodScore = emotionKeywordService.deriveMoodScore(matched, emotionCaptureDefaultMoodScore);
             Long diaryId = emotionDiaryService.createDiaryFromChat(
-                    userId, sessionId, userMessage, matched, emotionCaptureDefaultMoodScore);
+                    userId, sessionId, userMessage, matchedKeywords, moodScore);
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("diaryId", diaryId);
-            data.put("matchedKeywords", matched);
+            data.put("matchedKeywords", matchedKeywords);
+            data.put("moodScore", moodScore);
             data.put("hint", "检测到情绪波动，已为你记录，AI 评估稍后完成");
             Map<String, Object> frame = new LinkedHashMap<>();
             frame.put("code", "200");
             frame.put("data", data);
 
             emitter.send(SseEmitter.event().name("emotion_captured").data(write(frame)));
-            log.info("情绪自动记录完成 diaryId={} sessionId={} keywords={}", diaryId, sessionId, matched);
+            log.info("情绪自动记录完成 diaryId={} sessionId={} keywords={} moodScore={}",
+                    diaryId, sessionId, matchedKeywords, moodScore);
         } catch (Exception e) {
             log.warn("情绪自动记录失败（不影响对话），sessionId={}", sessionId, e);
         }

@@ -25,6 +25,12 @@ public class EmotionKeyword {
     /** 1=启用，0=停用 */
     private Integer enabled;
 
+    /**
+     * 词的严重度等级：1=轻度（日常吐槽信号）、2=中度（明确负向状态）、
+     * 3=重度（痛苦/危机信号）。自动记录情绪日志时按命中词推导初始心情分。
+     */
+    private Integer level;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

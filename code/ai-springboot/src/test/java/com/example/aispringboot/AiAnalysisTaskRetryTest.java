@@ -118,5 +118,17 @@ public class AiAnalysisTaskRetryTest {
         EmotionDiary diary = diaryMapper.selectById(diaryId);
         assertNotNull(diary.getAiEmotionAnalysis());
         assertNotNull(diary.getAiAnalysisUpdatedAt());
+        assertEquals(6, diary.getMoodScore(), "emotionScore=60 应回写心情分 6，覆盖初始分 3");
+    }
+
+    @Test
+    public void emotionScore换算_十等分并夹取到1到10() {
+        assertEquals(10, AiAnalysisTaskService.toMoodScore(100).intValue());
+        assertEquals(6, AiAnalysisTaskService.toMoodScore(60).intValue());
+        assertEquals(6, AiAnalysisTaskService.toMoodScore(55).intValue(), "四舍五入：5.5 取 6");
+        assertEquals(1, AiAnalysisTaskService.toMoodScore(0).intValue());
+        assertEquals(1, AiAnalysisTaskService.toMoodScore(7).intValue(), "0.7 四舍五入为 1");
+        assertNull(AiAnalysisTaskService.toMoodScore(null), "字段缺失不回写");
+        assertNull(AiAnalysisTaskService.toMoodScore("60"), "非数值不回写");
     }
 }

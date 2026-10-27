@@ -56,18 +56,64 @@ INSERT INTO public.emotion_diary (id, user_id, diary_date, mood_score, dominant_
 -- Data for Name: emotion_keyword; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (1, '焦虑', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (2, '抑郁', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (3, '崩溃', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (4, '难受', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (5, '压力大', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (6, '失眠', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (7, '想哭', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (8, '撑不住', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (9, '绝望', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (10, '烦躁', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (11, '心累', 1);
-INSERT INTO public.emotion_keyword (id, keyword, enabled) VALUES (12, '喘不过气', 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (1, '焦虑', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (2, '抑郁', 1, 3);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (3, '崩溃', 1, 3);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (4, '难受', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (5, '压力大', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (6, '失眠', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (7, '想哭', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (8, '撑不住', 1, 3);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (9, '绝望', 1, 3);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (10, '烦躁', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (11, '心累', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (12, '喘不过气', 1, 3);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (13, '心情不好', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (14, '心情糟糕', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (15, '糟糕', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (16, '心情很差', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (17, '不开心', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (18, '不高兴', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (19, '难过', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (20, '伤心', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (21, '郁闷', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (22, '心烦', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (23, '好烦', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (24, '烦死了', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (25, '好累', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (26, '太累', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (27, '累死了', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (28, '疲惫', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (29, '压力', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (30, '压抑', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (31, '迷茫', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (32, '孤独', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (33, '委屈', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (34, '心慌', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (35, '无助', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (36, '低落', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (37, '沮丧', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (38, '失落', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (39, '空虚', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (40, '睡不着', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (41, '睡不好', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (42, '没睡好', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (43, 'emo', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (44, '不想活', 1, 3);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (45, '活着没意思', 1, 3);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (46, '想消失', 1, 3);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (47, '撑不下去', 1, 3);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (48, '自责', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (49, '内疚', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (50, '恐慌', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (51, '破防', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (52, '泪崩', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (53, '心力交瘁', 1, 2);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (54, '没劲', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (55, '无聊', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (56, '心塞', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (57, '不想动', 1, 1);
+INSERT INTO public.emotion_keyword (id, keyword, enabled, level) VALUES (58, '提不起劲', 1, 1);
 
 
 --
@@ -187,7 +233,7 @@ SELECT pg_catalog.setval('public.emotion_diary_id_seq', 92, true);
 -- Name: emotion_keyword_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.emotion_keyword_id_seq', 12, true);
+SELECT pg_catalog.setval('public.emotion_keyword_id_seq', 58, true);
 
 
 --
